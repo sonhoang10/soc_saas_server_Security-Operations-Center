@@ -1,0 +1,69 @@
+# ==========================================
+# 🐍 PYTHON BACKEND (Core, API, Scripts)
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+soc_env/
+
+# ==========================================
+# 🌐 NODEJS & FRONTEND (Root & Flux module)
+# ==========================================
+node_modules/
+Flux/node_modules/
+Flux/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==========================================
+# 🔐 SECRETS & ENVIRONMENT VARIABLES (CRITICAL)
+# ==========================================
+# Ngăn rò rỉ Key và Database. Chỉ giữ lại example.env
+.env
+.env.*
+!.env.example
+!example.env
+.ssh/
+
+# ==========================================
+# 📝 PROJECT SPECIFIC LOGS & DYNAMIC DATA
+# ==========================================
+*.log
+*.sqlite3
+banned_ips_history.txt
+.pm2/
+.kafka_server/
+
+# ==========================================
+# 💻 OS & IDE CONFIGURATIONS
+# ==========================================
+.vscode/
+.vscode-server/
+.idea/
+.copilot/
+.DS_Store
+Thumbs.db
+
+# ==========================================
+# 🐧 LINUX ROOT DIRECTORY CLUTTER
+# ==========================================
+# Ngăn chặn Git bốc file hệ thống của VPS root
+.cache/
+.local/
+.dotnet/
+.npm/
+.bash_history
+.bashrc
+.profile
+.wget-hsts
+.lesshst
+.cloud-locale-test.skip
+.gitconfig
+
+# ==========================================
+# 🗑️ OTHER SPECIFIC FILES
+# ==========================================
+scripts/clean_db.py
+alembic/versions/

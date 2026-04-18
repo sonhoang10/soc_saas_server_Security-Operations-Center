@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flux | Select Workspace</title>
+    <link rel="stylesheet" href="src/index.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+    <script>
+        // Authentication Gate: Validate token presence before rendering
+        const token = localStorage.getItem('soc_token') || localStorage.getItem('access_token'); 
+        if (!token) window.location.href = '/SignIn.html';
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    </script>
+  </head>
+  <body class="bg-[#0a0a0a] text-white antialiased min-h-screen flex flex-col">
+    <nav class="border-b border-[#3e3e3e] bg-[#111111]/80 backdrop-blur-md z-50 sticky top-0">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <i data-lucide="shield-check" class="text-[#3ecf8e] w-8 h-8"></i>
+                <span class="text-xl font-bold tracking-tight text-white uppercase">FLUX <span class="text-[#3ecf8e] text-sm">SOC</span></span>
+            </div>
+            <div class="flex items-center gap-6">
+                <div class="hidden md:flex items-center gap-2 text-sm text-[#a0a0a0]">
+                    <div class="w-2 h-2 rounded-full bg-[#3ecf8e] animate-pulse"></div>
+                    System Online
+                </div>
+                <button onclick="logout()" class="flex items-center gap-2 bg-[#1c1c1c] border border-[#3e3e3e] hover:border-red-500 hover:text-red-400 px-4 py-2 rounded-lg text-sm font-mono transition-all">
+                    <i data-lucide="log-out" class="w-4 h-4"></i> Disconnect
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto px-6 py-10 w-full">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold tracking-tight">Your Workspaces</h1>
+            <p class="text-[#a0a0a0] mt-2">Select an organization to continue to the dashboard, or create a new one.</p>
+        </div>
+
+        <div id="loading-state" class="flex justify-center py-10">
+            <div class="w-8 h-8 border-4 border-[#3ecf8e] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+
+        <div id="workspace-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 hidden"></div>
+
+        <div class="mt-10 bg-[#111111] border border-[#3e3e3e] rounded-xl p-8 max-w-4xl">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-2 border-b border-[#3e3e3e] pb-4">
+                <i data-lucide="building" class="text-[#3ecf8e] w-5 h-5"></i>
+                Register Organization Profile
+            </h2>
+            
+            <form id="team-form" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs text-[#a0a0a0] mb-2 uppercase tracking-wider">Organization Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="company-name" required placeholder="What we can call you" class="w-full bg-[#1c1c1c] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm focus:border-[#3ecf8e] outline-none text-white transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#a0a0a0] mb-2 uppercase tracking-wider">Unique Identifier <span class="text-red-500">*</span></label>
+                        <input type="text" id="company-unique-name" required placeholder="e.g. acme-corp (no spaces)" class="w-full bg-[#1c1c1c] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm focus:border-[#3ecf8e] outline-none text-white transition-colors font-mono lowercase">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#a0a0a0] mb-2 uppercase tracking-wider">Contact Email <span class="text-red-500">*</span></label>
+                        <input type="email" id="company-email" required placeholder="security@domain.com" class="w-full bg-[#1c1c1c] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm focus:border-[#3ecf8e] outline-none text-white transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#a0a0a0] mb-2 uppercase tracking-wider">Contact Phone <span class="text-red-500">*</span></label>
+                        <input type="tel" id="company-phone" required placeholder="+1..." class="w-full bg-[#1c1c1c] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm focus:border-[#3ecf8e] outline-none text-white transition-colors">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[#3e3e3e]/50">
+                    <div>
+                        <label class="block text-xs text-[#a0a0a0] mb-2 uppercase tracking-wider">Industry</label>
+                        <select id="industry" class="w-full bg-[#1c1c1c] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm focus:border-[#3ecf8e] outline-none text-white transition-colors appearance-none cursor-pointer">
+                            <option value="Technology">Technology & Software</option>
+                            <option value="Finance">Financial Services</option>
+                            <option value="Healthcare">Healthcare</option>
+                            <option value="Education">Education</option>
+                            <option value="Retail">Retail & E-commerce</option>
+                            <option value="Government">Government / Public Sector</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#a0a0a0] mb-2 uppercase tracking-wider">Company Size</label>
+                        <select id="company-size" class="w-full bg-[#1c1c1c] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm focus:border-[#3ecf8e] outline-none text-white transition-colors appearance-none cursor-pointer">
+                            <option value="1-10">1-10 employees</option>
+                            <option value="11-50">11-50 employees</option>
+                            <option value="51-200">51-200 employees</option>
+                            <option value="201-1000">201-1000 employees</option>
+                            <option value="1000+">1000+ employees</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#a0a0a0] mb-2 uppercase tracking-wider">Timezone & Region</label>
+                        <select id="timezone-region" class="w-full bg-[#1c1c1c] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm focus:border-[#3ecf8e] outline-none text-white transition-colors appearance-none cursor-pointer">
+                            <option value="Asia/Ho_Chi_Minh">Asia/Ho_Chi_Minh (UTC+7)</option>
+                            <option value="Asia/Singapore">Asia/Singapore (UTC+8)</option>
+                            <option value="America/New_York">America/New_York (EST)</option>
+                            <option value="Europe/London">Europe/London (GMT)</option>
+                            <option value="UTC">Coordinated Universal Time (UTC)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-[#a0a0a0] mb-2 uppercase tracking-wider">Tell us what it's for</label>
+                        <select id="use-case" class="w-full bg-[#1c1c1c] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm focus:border-[#3ecf8e] outline-none text-white transition-colors appearance-none cursor-pointer">
+                            <option value="Simple Web">A simple web</option>
+                            <option value="Educational">Class project / Educational purposes</option>
+                            <option value="Blog">Website or blog</option>
+                            <option value="Web App">Web Application</option>
+                            <option value="API">Service or API</option>
+                            <option value="Mobile App">Mobile Application</option>
+                            <option value="AI/Data">Machine learning / AI / Data processing</option>
+                            <option value="IoT">IoT</option>
+                            <option value="Tooling">Operational / Developer tooling</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-[#3e3e3e]/50">
+                    <label class="block text-xs text-[#a0a0a0] mb-2 uppercase tracking-wider">Tax ID / Business Registration (Optional)</label>
+                    <input type="text" id="tax-id" placeholder="Provide for compliant invoicing" class="w-full bg-[#1c1c1c] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm focus:border-[#3ecf8e] outline-none text-white transition-colors font-mono">
+                </div>
+
+                <div class="pt-4 border-t border-[#3e3e3e]/50">
+                    <label class="block text-xs text-[#a0a0a0] mb-2 uppercase tracking-wider">Additional Description</label>
+                    <textarea id="description" rows="3" placeholder="Any specific requirements or notes regarding your infrastructure..." class="w-full bg-[#1c1c1c] border border-[#3e3e3e] rounded-lg px-4 py-2.5 text-sm focus:border-[#3ecf8e] outline-none text-white transition-colors resize-none"></textarea>
+                </div>
+
+                <div class="pt-6">
+                    <button type="submit" id="submit-btn" class="w-full bg-[#3ecf8e] hover:bg-[#34b27a] text-black font-bold py-3 px-8 rounded-lg text-sm transition-all shadow-[0_0_15px_rgba(62,207,142,0.2)] flex items-center justify-center gap-2">
+                        <i data-lucide="check-circle" class="w-5 h-5"></i>
+                        Initialize Organization Environment
+                    </button>
+                    <p class="text-center text-xs text-[#5a5a5a] mt-4">By creating an organization, you agree to the provisioning of base tier limits (Max 3 Servers).</p>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script> lucide.createIcons(); </script>
+    <script>
+        const backendURL = `http://${window.location.hostname}:8000`;
+
+        function logout() {
+            localStorage.removeItem('soc_token');
+            localStorage.removeItem('access_token');
+            window.location.href = '/SignIn.html';
+        }
+
+        // Global response interceptor to handle expired/invalid JWT tokens
+        axios.interceptors.response.use(response => response, error => {
+            if (error.response && error.response.status === 401) {
+                alert("Session expired. Please login again.");
+                logout();
+            }
+            return Promise.reject(error);
+        });
+
+        async function fetchWorkspaces() {
+            try {
+                const response = await axios.get(`${backendURL}/api/teams/my-teams`);
+                const teams = response.data.teams || [];
+                
+                document.getElementById('loading-state').classList.add('hidden');
+                const grid = document.getElementById('workspace-grid');
+                grid.classList.remove('hidden');
+
+                if (teams.length > 0) {
+                    grid.innerHTML = teams.map(team => `
+                        <div onclick="goToTeam('${team.id}', '${team.status}')" 
+                             class="bg-[#1c1c1c] border ${team.status === 'pending' ? 'border-[#3e3e3e] opacity-70' : 'border-[#3e3e3e] hover:border-[#3ecf8e]'} rounded-xl p-6 relative group transition-colors cursor-pointer">
+                            <div class="flex justify-between items-start mb-4">
+                                <i data-lucide="building-2" class="${team.status === 'pending' ? 'text-[#a0a0a0]' : 'text-[#3ecf8e]'} w-8 h-8"></i>
+                                ${team.status === 'pending' 
+                                    ? '<span class="bg-yellow-500/10 text-yellow-500 text-[10px] px-2 py-1 rounded border border-yellow-500/20 uppercase font-bold tracking-wider">Pending</span>'
+                                    : '<span class="bg-[#3ecf8e]/10 text-[#3ecf8e] text-[10px] px-2 py-1 rounded border border-[#3ecf8e]/20 uppercase font-bold tracking-wider">Active</span>'
+                                }
+                            </div>
+                            <h3 class="text-xl font-bold truncate">${team.name}</h3>
+                            <p class="text-xs text-[#a0a0a0] mt-2 uppercase tracking-widest flex items-center gap-1 font-mono">
+                                <i data-lucide="shield" class="w-3 h-3"></i> Role: ${team.role}
+                            </p>
+                        </div>
+                    `).join('');
+                    lucide.createIcons();
+                } else {
+                    grid.innerHTML = `
+                        <div class="col-span-full py-8 border border-dashed border-[#3e3e3e] bg-[#1c1c1c]/50 rounded-xl text-center">
+                            <p class="text-[#a0a0a0]">You are not part of any organization yet.</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error("Error fetching workspaces:", error);
+                document.getElementById('loading-state').innerHTML = `<p class="text-red-500 text-center">Failed to load workspaces.</p>`;
+            }
+        }
+
+        // --- UPDATED ROUTING LOGIC ---
+        // Redirects to organization.html instead of client.html
+        function goToTeam(teamId, status) {
+            if (status === 'pending') {
+                alert("This organization is waiting for administrator approval.");
+                return;
+            }
+            window.location.href = `/organization.html?team_id=${teamId}`;
+        }
+
+        window.addEventListener('DOMContentLoaded', fetchWorkspaces);
+
+        document.getElementById('team-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            const originalHTML = btn.innerHTML;
+            
+            // Prevent multiple submissions
+            btn.innerHTML = `<div class="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div> Processing...`;
+            btn.disabled = true;
+
+            const payload = {
+                name: document.getElementById('company-name').value,
+                unique_name: document.getElementById('company-unique-name').value,
+                company_email: document.getElementById('company-email').value,
+                company_phone: document.getElementById('company-phone').value,
+                industry: document.getElementById('industry').value,
+                company_size: document.getElementById('company-size').value,
+                timezone_region: document.getElementById('timezone-region').value,
+                use_case: document.getElementById('use-case').value,
+                tax_id: document.getElementById('tax-id').value,
+                description: document.getElementById('description').value
+            };
+
+            try {
+                const response = await axios.post(`${backendURL}/api/teams/request`, payload);
+                alert("Success: Organization context initialized successfully.");
+                window.location.reload(); 
+            } catch (error) {
+                console.error(error);
+                alert("Error: " + (error.response?.data?.detail || "System rejected organization creation. Check console for details."));
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        });
+    </script>
+  </body>
+</html>
