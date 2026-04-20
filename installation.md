@@ -3,13 +3,21 @@
 This guide covers the complete installation of the Flux SOC architecture. It assumes you are deploying on an Ubuntu 22.04/24.04 environment.
 
 ## On kafka server:
-1. Execute the automated installation script: You can utilize the provided [kafka_install.sh](.kafka_server/kafka_install.sh)
+1. Install the kafka_install.sh:
+```bash
+curl -L https://raw.githubusercontent.com/sonhoang10/soc_saas_server_Security-Operations-Center/main/.kafka_server/kafka_install.sh -o kafka_install.sh
+```
+or 
+```bash
+wget https://raw.githubusercontent.com/sonhoang10/soc_saas_server_Security-Operations-Center/main/.kafka_server/kafka_install.sh -O kafka_install.sh
+```
+2. Execute the automated installation script: You can utilize the provided [kafka_install.sh](.kafka_server/kafka_install.sh)
 ```bash
 # Grant execution permissions and run the script
 chmod +x kafka_install.sh
-sudo kafka_install.sh
+sudo ./kafka_install.sh
 ```
-2. Verification: Ensure that the Kafka service is actively running:
+3. Verification: Ensure that the Kafka service is actively running:
 ```bash
 sudo systemctl status kafka
 ```
@@ -46,17 +54,49 @@ pip install -r requirements.txt
 Create a .env file in the root directory based on [example.env](example.env)
 
 ### Step 2.3: Database Migration
-Alembic Initialization:
+First, install and configure PostgreSQL:
 ```bash
-alembic init alembic
+sudo apt-get update
+sudo apt-get install -y postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+
+# Create Database and User (Replace 'your_password' with a secure password)
+sudo -u postgres psql -c "CREATE DATABASE soc_db;"
+sudo -u postgres psql -c "CREATE USER soc_user WITH ENCRYPTED PASSWORD 'your_password';"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE soc_db TO soc_user;"
 ```
 Apply the latest database schemas using Alembic:
 ```bash
-alembic revision --autogenerate -m "brief_description_of_your_changes"
-alembic revision --autogenerate -m "brief_description_of_your_changes"
+# alembic revision --autogenerate -m "brief_description_of_your_changes" #if you change anything in models.py
+alembic upgrade head 
 ```
 
-### Step 2.4: Start Backend Services via PM2
+## Step 2.4: Clickhouse installation
+```bash
+sudo apt-get install -y apt-transport-https ca-certificates dirmngr
+sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 8919F6BD2B48D754
+echo "deb https://packages.clickhouse.com/deb stable main" | sudo tee /etc/apt/sources.list.d/clickhouse.list
+sudo apt-get update
+sudo apt-get install -y clickhouse-server clickhouse-client
+```
+Start ClickHouse:
+```bash
+sudo systemctl start clickhouse-server
+sudo systemctl enable clickhouse-server
+clickhouse-client
+```
+
+### 2.5. Frontend Dashboard Setup
+Navigate to the React application directory and build the project:
+```bash
+cd Flux/
+npm install
+npm run build
+cd ..
+```
+
+### Step 2.6: Start Backend Services via PM2
 ```bash
 # 1. Web Backend (Dashboard API & WebSockets)
 pm2 start "./soc_env/bin/uvicorn api.web_backend:app --host 0.0.0.0 --port 8000" --name "soc-backend"
@@ -67,17 +107,19 @@ pm2 start "./soc_env/bin/uvicorn core.logic_engine:app --host 0.0.0.0 --port 800
 # 3. Kafka Consumer (Data Pipeline)
 pm2 start "./soc_env/bin/python core/kafka_consumer.py" --name "soc-consumer"
 
+# 4. Web Frontend (UI Server)
+pm2 start "./soc_env/bin/uvicorn api.web_frontend:app --host 0.0.0.0 --port 8080" --name "soc-frontend"
+
 pm2 save
 ```
-
-## 3. Frontend Dashboard Setup
-Navigate to the React application directory and build the project:
+### Step 2.7: Configure UFW Firewall
+If you have UFW enabled, you must open the required ports for the dashboard and API communication:
 ```bash
-cd Flux/
-npm install
-npm run build
+sudo ufw allow 8000/tcp # Web Backend API
+sudo ufw allow 8001/tcp # Logic Engine API
+sudo ufw allow 8080/tcp # Frontend Dashboard
+sudo ufw reload
 ```
-
 ## 4. Client Agent Deployment (Target Servers)
 #### To monitor a client server, you do NOT need to configure it manually.
 1. Log in to the Flux Dashboard.
@@ -88,6 +130,35 @@ npm run build
 #### Deployment Phases:
 * Phase 1 (Flux Monitor): Installs Filebeat to stream auth.log and nginx.log passively.
 * Phase 2 (Active Defender): Installs a lightweight FastAPI agent to accept iptables Ban/Unban commands from the SOC Logic Engine.
+
+## 5. Client Server (optional)
+#### 1. Prepare environment & Install dependencies
+```bash
+sudo apt update
+sudo apt install nodejs npm -y
+sudo npm install pm2 -g
+
+mkdir -p ~/web-test-soc
+cd ~/web-test-soc
+npm init -y
+npm install express body-parser
+```
+
+#### 2. Install server.js:
+```bash
+curl -L https://raw.githubusercontent.com/sonhoang10/soc_saas_server_Security-Operations-Center/main/.client_server/server.js -o server.js
+```
+or 
+```bash
+wget https://raw.githubusercontent.com/sonhoang10/soc_saas_server_Security-Operations-Center/main/.client_server/server.js -O server.js
+```
+
+#### 3. Start server.js
+```bash
+sudo pm2 start server.js --name "web-login"
+sudo pm2 save
+sudo pm2 startup
+```
 
 ## Troubleshooting commands
 ```Bash
