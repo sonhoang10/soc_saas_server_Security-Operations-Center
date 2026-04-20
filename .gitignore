@@ -34,7 +34,6 @@ yarn-error.log*
 *.sqlite3
 banned_ips_history.txt
 .pm2/
-.kafka_server/
 
 # ==========================================
 # 💻 OS & IDE CONFIGURATIONS
