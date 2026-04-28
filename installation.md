@@ -65,9 +65,10 @@ sudo systemctl start postgresql
 sudo systemctl enable postgresql
 
 # Create Database and User (Replace 'your_password' with a secure password)
-sudo -u postgres psql -c "CREATE DATABASE soc_db;"
-sudo -u postgres psql -c "CREATE USER soc_user WITH ENCRYPTED PASSWORD 'your_password';"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE soc_db TO soc_user;"
+sudo -u postgres psql -c "CREATE DATABASE soc_main_db;"
+sudo -u postgres psql -c "CREATE USER soc_admin WITH ENCRYPTED PASSWORD 'your_password';"
+sudo -u postgres psql -c "ALTER DATABASE soc_main_db OWNER TO soc_admin;"
+sudo -u postgres psql -d soc_main_db -c "GRANT ALL ON SCHEMA public TO soc_admin;"
 ```
 Apply the latest database schemas using Alembic:
 ```bash
