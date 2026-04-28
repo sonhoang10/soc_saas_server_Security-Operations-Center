@@ -45,6 +45,8 @@ Ensure your Cloud Firewall allows inbound traffic on:
 Clone the repository and set up the virtual environment:
 ```bash
 cd ~/Flux-SOC
+sudo apt update
+apt install python3-pip
 python3 -m venv soc_env
 source soc_env/bin/activate
 pip install -r requirements.txt
