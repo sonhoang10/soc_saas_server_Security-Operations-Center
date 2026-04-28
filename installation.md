@@ -51,6 +51,7 @@ apt install python3.12-venv
 python3 -m venv soc_env
 source soc_env/bin/activate
 pip install -r requirements.txt
+npm install pm2 -g
 ```
 
 ### Step 2.2: Environment Variables
