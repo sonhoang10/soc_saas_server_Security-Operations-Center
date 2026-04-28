@@ -47,6 +47,7 @@ Clone the repository and set up the virtual environment:
 cd ~/Flux-SOC
 sudo apt update
 apt install python3-pip
+apt install python3.12-venv
 python3 -m venv soc_env
 source soc_env/bin/activate
 pip install -r requirements.txt
