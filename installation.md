@@ -87,7 +87,7 @@ sudo -u postgres psql -d soc_main_db -c "GRANT ALL ON SCHEMA public TO soc_admin
 ```
 Apply the latest database schemas using Alembic:
 ```bash
-# alembic revision --autogenerate -m "brief_description_of_your_changes" #if you change anything in models.py
+alembic revision --autogenerate -m "brief_description_of_your_changes"
 alembic upgrade head 
 ```
 
