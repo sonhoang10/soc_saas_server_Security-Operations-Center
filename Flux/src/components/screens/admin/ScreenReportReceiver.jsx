@@ -2,23 +2,24 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   Inbox, CheckCircle, XCircle, AlertCircle, 
-  Search, Filter, MoreVertical, Building2, Globe, FileJson, Cloud, ChevronDown, Clock
+  Search, Filter, MoreVertical, Building2, Globe, FileJson, 
+  Cloud, ChevronDown, Clock, Mail, Phone, User, Briefcase, 
+  Users, MapPin, Target, Hash, AlignLeft
 } from 'lucide-react';
 
-const backendURL = `http://${window.location.hostname}:8000`; 
+// Rationale: Utilizing relative path fallback for security (Nginx proxy setup)
+const backendURL = import.meta.env.VITE_BACKEND_URL || ''; 
 
 const ScreenReportReceiver = () => {
   // ==========================================
   // 1. GLOBAL STATE
   // ==========================================
-  const [viewMode, setViewMode] = useState('approvals'); // 'approvals' hoặc 'incidents'
+  const [viewMode, setViewMode] = useState('approvals');
   
-  // State cho Approvals (Pending Workspace)
   const [requests, setRequests] = useState([]);
   const [selectedReq, setSelectedReq] = useState(null);
   const [loadingReqs, setLoadingReqs] = useState(false);
 
-  // State cho Incidents (Mock data để demo form của bạn)
   const [incidents, setIncidents] = useState([
     {
       id: 'INC-001',
@@ -45,7 +46,6 @@ const ScreenReportReceiver = () => {
   ]);
   const [selectedIncident, setSelectedIncident] = useState(null);
 
-  // Reset selected item khi đổi tab
   useEffect(() => {
     setSelectedReq(null);
     setSelectedIncident(null);
@@ -61,9 +61,9 @@ const ScreenReportReceiver = () => {
       const response = await axios.get(`${backendURL}/api/admin/teams/pending`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setRequests(response.data.pending_requests || []);
+      setRequests(response.data.teams || []); 
     } catch (error) {
-      console.error("Lỗi lấy danh sách pending:", error);
+      console.error("Fetch pending requests failed:", error);
     } finally {
       setLoadingReqs(false);
     }
@@ -77,30 +77,29 @@ const ScreenReportReceiver = () => {
 
   const handleReview = async (teamId, action) => {
     const confirmMsg = action === 'approve' 
-      ? 'Bạn có chắc chắn muốn PHÊ DUYỆT hệ thống này không?' 
-      : 'Bạn có chắc chắn muốn TỪ CHỐI yêu cầu này không?';
+      ? 'Duyệt cấp phát tài nguyên cho tổ chức này?' 
+      : 'Từ chối yêu cầu của tổ chức này?';
     
     if (!window.confirm(confirmMsg)) return;
 
     try {
       const token = localStorage.getItem('soc_token') || localStorage.getItem('access_token');
-      await axios.post(`${backendURL}/api/admin/teams/${teamId}/review`, 
+      await axios.post(`${backendURL}/api/admin/teams/${teamId}/action`, 
         { action: action },
         { headers: { Authorization: `Bearer ${token}` }}
       );
-      alert(`Đã ${action} thành công!`);
       setSelectedReq(null);
       fetchPendingRequests();
     } catch (error) {
-      alert("Lỗi: " + (error.response?.data?.detail || "Không thể thực hiện hành động."));
+      alert("Error: " + (error.response?.data?.detail || "Action failed."));
     }
   };
 
   // ==========================================
-  // 3. RENDER FUNCTIONS (Tách logic giao diện)
+  // 3. RENDER FUNCTIONS
   // ==========================================
 
-  // --- 3A. RENDER CỘT TRÁI (LIST) ---
+  // --- 3A. RENDER LEFT COLUMN (LIST) ---
   const renderList = () => {
     if (viewMode === 'approvals') {
       if (loadingReqs) return <div className="p-6 text-center text-[#555] text-sm font-mono">Loading requests...</div>;
@@ -121,14 +120,14 @@ const ScreenReportReceiver = () => {
           </div>
           <p className="text-xs text-[#a0a0a0] mb-2">{req.company_email}</p>
           <div className="flex gap-2">
-            <span className="bg-yellow-500/10 text-yellow-500 text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">New Workspace</span>
-            <span className="bg-[#2a2a2a] text-[#a0a0a0] text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">{req.cloud_provider || 'Unknown Cloud'}</span>
+            <span className="bg-yellow-500/10 text-yellow-500 text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">Pending</span>
+            <span className="bg-[#2a2a2a] text-[#a0a0a0] text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">{req.industry || 'Unknown'}</span>
           </div>
         </div>
       ));
     }
 
-    // Luồng Incidents
+    // Incidents Flow
     return incidents.map((inc) => (
       <div 
         key={inc.id} onClick={() => setSelectedIncident(inc)}
@@ -149,9 +148,8 @@ const ScreenReportReceiver = () => {
     ));
   };
 
-  // --- 3B. RENDER CỘT PHẢI (DETAILS) ---
+  // --- 3B. RENDER RIGHT COLUMN (DETAILS) ---
   const renderDetails = () => {
-    // TRƯỜNG HỢP 1: CHƯA CHỌN GÌ
     if ((viewMode === 'approvals' && !selectedReq) || (viewMode === 'incidents' && !selectedIncident)) {
       return (
         <div className="flex-1 flex flex-col items-center justify-center text-[#555]">
@@ -161,10 +159,10 @@ const ScreenReportReceiver = () => {
       );
     }
 
-    // TRƯỜNG HỢP 2: ĐANG XEM APPROVALS
     if (viewMode === 'approvals' && selectedReq) {
       return (
         <>
+          {/* Action Header */}
           <div className="h-14 border-b border-[#1e1e1e] flex items-center justify-between px-6 bg-[#0d0d0d]/50 shrink-0">
             <div className="flex gap-4">
               <button onClick={() => handleReview(selectedReq.id, 'approve')} className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-[#3ecf8e]/10 border border-[#3ecf8e]/30 text-xs font-bold text-[#3ecf8e] hover:bg-[#3ecf8e] hover:text-black transition-all">
@@ -174,51 +172,109 @@ const ScreenReportReceiver = () => {
                 <XCircle size={14} /> Reject Request
               </button>
             </div>
+            <span className="text-xs font-mono text-[#555]">Req ID: {selectedReq.id?.substring(0,8)}...</span>
           </div>
+
           <div className="flex-1 overflow-y-auto p-8 lg:p-12 flux-scrollbar">
             <div className="max-w-4xl mx-auto space-y-8">
+              
+              {/* Header Section */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-[#3ecf8e] text-xs font-bold uppercase tracking-widest mb-2">
-                  <Building2 size={16} /> New Organization Setup
+                <div className="flex items-center gap-2 text-yellow-500 text-xs font-bold uppercase tracking-widest mb-2">
+                  <Clock size={16} /> Pending Review
                 </div>
-                <h1 className="text-3xl font-extrabold text-white leading-tight">{selectedReq.name}</h1>
-                <p className="text-sm text-[#a0a0a0] font-mono">Unique ID: {selectedReq.unique_name}</p>
+                <h1 className="text-4xl font-extrabold text-white leading-tight">{selectedReq.name}</h1>
+                <div className="flex items-center gap-3">
+                  <span className="px-2.5 py-1 bg-[#1a1a1a] border border-[#3e3e3e] rounded font-mono text-xs text-[#a0a0a0]">
+                    ID: {selectedReq.unique_name}
+                  </span>
+                  <span className="text-xs text-[#555]">
+                    Submitted {new Date(selectedReq.created_at).toLocaleString()}
+                  </span>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-[#111] p-6 rounded-xl border border-[#1e1e1e]">
-                <div><p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1">Contact Email</p><p className="text-sm font-medium">{selectedReq.company_email}</p></div>
-                <div><p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1">Contact Phone</p><p className="text-sm font-medium">{selectedReq.company_phone}</p></div>
-                <div><p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1">Cloud</p><p className="text-sm font-medium flex items-center gap-2"><Cloud size={14} className="text-[#3ecf8e]"/> {selectedReq.cloud_provider || 'Not specified'}</p></div>
-                <div><p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1">Compliance Goal</p><p className="text-sm font-medium">{selectedReq.compliance_goal || 'General Security'}</p></div>
+              {/* Rationale: Grouping related information minimizes cognitive load for SOC Admins */}
+              
+              {/* Card 1: Contact Information */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#1e1e1e] bg-[#161616]">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <User size={16} className="text-[#3ecf8e]" /> Contact Information
+                  </h3>
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1 flex items-center gap-1"><Mail size={12}/> Company Email</p>
+                    <p className="text-sm font-medium text-[#ededed]">{selectedReq.company_email}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1 flex items-center gap-1"><Phone size={12}/> Company Phone</p>
+                    <p className="text-sm font-medium text-[#ededed]">{selectedReq.company_phone || 'Not Provided'}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1 flex items-center gap-1"><User size={12}/> Account Owner (Requester)</p>
+                    <p className="text-sm font-medium text-yellow-500">{selectedReq.owner_email}</p>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="text-lg font-bold flex items-center gap-2 border-b border-[#1e1e1e] pb-2"><Globe size={18} className="text-[#3ecf8e]" /> Monitored Assets</h3>
-                <div className="flex flex-wrap gap-2">
-                  {selectedReq.assets?.length > 0 ? selectedReq.assets.map(asset => (
-                    <div key={asset.id} className="flex items-center gap-2 bg-[#1c1c1c] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm">
-                        <span className="text-[#a0a0a0] text-[10px] uppercase bg-black px-1.5 py-0.5 rounded font-bold">{asset.asset_type}</span>
-                        <span className="font-mono text-[#ededed]">{asset.asset_value}</span>
+              {/* Card 2: Business Profile */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#1e1e1e] bg-[#161616]">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Building2 size={16} className="text-[#3ecf8e]" /> Business Profile
+                  </h3>
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1 flex items-center gap-1"><Briefcase size={12}/> Industry</p>
+                    <p className="text-sm font-medium text-[#ededed]">{selectedReq.industry}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1 flex items-center gap-1"><Users size={12}/> Company Size</p>
+                    <p className="text-sm font-medium text-[#ededed]">{selectedReq.company_size || 'Not Provided'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1 flex items-center gap-1"><Hash size={12}/> Tax ID / Registration</p>
+                    <p className="text-sm font-medium font-mono text-[#a0a0a0]">{selectedReq.tax_id || 'N/A'}</p>
+                  </div>
+                  <div className="lg:col-span-3">
+                    <p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1 flex items-center gap-1"><MapPin size={12}/> Timezone & Region</p>
+                    <p className="text-sm font-medium text-[#ededed]">{selectedReq.timezone_region || 'UTC'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Project Scope & Use Case */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#1e1e1e] bg-[#161616]">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Target size={16} className="text-[#3ecf8e]" /> Infrastructure & Scope
+                  </h3>
+                </div>
+                <div className="p-6 space-y-6">
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1 flex items-center gap-1"><Target size={12}/> Primary Use Case</p>
+                    <p className="text-sm font-medium text-[#ededed]">{selectedReq.use_case || 'General Security Monitoring'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-[#555] uppercase font-bold tracking-wider mb-1 flex items-center gap-1"><AlignLeft size={12}/> Additional Description</p>
+                    <div className="bg-[#161616] border border-[#2a2a2a] rounded-lg p-4 mt-2">
+                      <p className="text-sm text-[#a0a0a0] whitespace-pre-wrap leading-relaxed">
+                        {selectedReq.description || 'No additional notes provided by the client.'}
+                      </p>
                     </div>
-                  )) : <p className="text-sm text-[#555] italic">Chưa khai báo tài sản.</p>}
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="text-lg font-bold flex items-center gap-2 border-b border-[#1e1e1e] pb-2"><FileJson size={18} className="text-[#3ecf8e]" /> Requested Log Sources</h3>
-                <div className="flex flex-wrap gap-2">
-                  {selectedReq.log_sources?.length > 0 ? selectedReq.log_sources.map(log => (
-                    <div key={log.id} className="bg-[#3ecf8e]/10 border border-[#3ecf8e]/30 text-[#3ecf8e] rounded-lg px-3 py-1.5 text-sm">{log.source_name}</div>
-                  )) : <p className="text-sm text-[#555] italic">Chưa yêu cầu Log Source.</p>}
-                </div>
-              </div>
             </div>
           </div>
         </>
       );
     }
 
-    // TRƯỜNG HỢP 3: ĐANG XEM INCIDENTS
     if (viewMode === 'incidents' && selectedIncident) {
       return (
         <>
@@ -277,11 +333,9 @@ const ScreenReportReceiver = () => {
   return (
     <div className="flex h-full w-full overflow-hidden bg-[#0a0a0a] text-[#ededed] border border-[#3e3e3e] rounded-xl">
       
-      {/* --- CỘT TRÁI --- */}
+      {/* --- LEFT COLUMN --- */}
       <aside className="w-[400px] border-r border-[#1e1e1e] flex flex-col shrink-0 bg-[#0d0d0d]">
         <div className="p-4 border-b border-[#1e1e1e] space-y-4">
-          
-          {/* Dropdown Chuyển đổi View */}
           <div className="relative">
             <select 
               value={viewMode}
@@ -294,7 +348,6 @@ const ScreenReportReceiver = () => {
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-[#a0a0a0]" size={20} pointerEvents="none" />
           </div>
 
-          {/* Search & Filter */}
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555]" size={14} />
@@ -309,7 +362,7 @@ const ScreenReportReceiver = () => {
         </div>
       </aside>
 
-      {/* --- CỘT PHẢI --- */}
+      {/* --- RIGHT COLUMN --- */}
       <main className="flex-1 flex flex-col bg-[#0a0a0a]">
         {renderDetails()}
       </main>
