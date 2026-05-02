@@ -11,7 +11,17 @@ or
 ```bash
 wget https://raw.githubusercontent.com/sonhoang10/soc_saas_server_Security-Operations-Center/main/.kafka_server/kafka_install.sh -O kafka_install.sh
 ```
-2. Execute the automated installation script: You can utilize the provided [kafka_install.sh](.kafka_server/kafka_install.sh)
+2. Update the package lists
+Run this command. If it gives you the "lock" error again, just wait 30 seconds and run it again until it finishes downloading the lists successfully.
+```bash
+sudo apt-get update
+```
+3. Install Java (Now that the index is updated)
+Once Step 2 completes without errors, run this to install Java and the required tools:
+```bash
+sudo apt-get install openjdk-17-jre-headless curl wget netcat-openbsd -y
+```
+4. Execute the automated installation script: You can utilize the provided [kafka_install.sh](.kafka_server/kafka_install.sh)
 ```bash
 # Grant execution permissions and run the script
 chmod +x kafka_install.sh
