@@ -144,7 +144,21 @@ sudo ufw allow 8001/tcp # Logic Engine API
 sudo ufw allow 8080/tcp # Frontend Dashboard
 sudo ufw reload
 ```
-## 4. Client Agent Deployment (Target Servers)
+## 4. Granting Super Admin Privileges
+### To grant global administrative rights to a user (e.g., for system-wide configuration access), you must elevate their privileges directly within the PostgreSQL database.
+1. Ensure the user has already registered an account via the Flux Dashboard UI.
+2. Access the PostgreSQL terminal on the Main SOC Server:
+```bash
+sudo -u postgres psql -d soc_main_db
+
+# Execute the UPDATE statement (replace target_email@example.com with the actual user email):
+UPDATE users SET is_superadmin = TRUE WHERE email = 'target_email@example.com';
+
+# Verify the role update:
+SELECT email, username, is_superadmin FROM users WHERE email = 'target_email@example.com';
+\q
+```
+## 5. Client Agent Deployment (Target Servers)
 #### To monitor a client server, you do NOT need to configure it manually.
 1. Log in to the Flux Dashboard.
 2. Navigate to Agent Deployment.
@@ -155,7 +169,7 @@ sudo ufw reload
 * Phase 1 (Flux Monitor): Installs Filebeat to stream auth.log and nginx.log passively.
 * Phase 2 (Active Defender): Installs a lightweight FastAPI agent to accept iptables Ban/Unban commands from the SOC Logic Engine.
 
-## 5. Client Server (optional)
+## 6. Client Server (optional)
 #### 1. Prepare environment & Install dependencies
 ```bash
 sudo apt update
