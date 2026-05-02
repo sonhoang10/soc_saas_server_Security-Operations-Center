@@ -54,6 +54,7 @@ Ensure your Cloud Firewall allows inbound traffic on:
 ### Step 2.1: Python Environment
 Clone the repository and set up the virtual environment:
 ```bash
+git clone https://github.com/sonhoang10/soc_saas_server_Security-Operations-Center.git Flux-SOC
 cd ~/Flux-SOC
 sudo apt update
 apt install python3-pip
