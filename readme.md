@@ -1,6 +1,6 @@
 # Flux SOC - Enterprise Cloud-based Security Operations Center
 
-![Version](https://img.shields.io/badge/version-2.0.0--Enterprise-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg)
 ![React](https://img.shields.io/badge/React-18+-61DAFB.svg)
 ![Kafka](https://img.shields.io/badge/kafka-3.7.0-red.svg)
