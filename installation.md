@@ -56,9 +56,12 @@ Clone the repository and set up the virtual environment:
 ```bash
 git clone https://github.com/sonhoang10/soc_saas_server_Security-Operations-Center.git Flux-SOC
 cd ~/Flux-SOC
+
 sudo apt update
 apt install python3-pip
 apt install python3.12-venv
+apt install npm
+
 python3 -m venv soc_env
 source soc_env/bin/activate
 pip install -r requirements.txt
