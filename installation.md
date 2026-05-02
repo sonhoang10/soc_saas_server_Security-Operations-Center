@@ -110,6 +110,10 @@ clickhouse-client
 Navigate to the React application directory and build the project:
 ```bash
 cd Flux/
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+node -v
+rm -rf node_modules package-lock.json
 npm install
 npm run build
 cd ..
