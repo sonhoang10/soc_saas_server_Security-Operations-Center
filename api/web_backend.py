@@ -41,6 +41,10 @@ INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "flux-soc-internal-secret-2026"
 api_key_header = APIKeyHeader(name="X-Internal-Token", auto_error=True)
 
 def verify_internal_service(api_key: str = Depends(api_key_header)):
+    """
+    Rationale: Validates machine-to-machine communication integrity.
+    Prevents unauthorized endpoints from injecting arbitrary alerts into the WebSocket broadcast stream.
+    """
     if api_key != INTERNAL_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
@@ -51,6 +55,10 @@ def verify_internal_service(api_key: str = Depends(api_key_header)):
 security = HTTPBearer()
 
 def verify_agent_auth(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+    """
+    Rationale: Authenticates external client agents (Filebeat/Defender) using SHA-256 hashed tokens.
+    Token hashes are stored in the database to mitigate exposure risks if the primary database is compromised.
+    """
     plain_text_token = credentials.credentials
     incoming_hash = hashlib.sha256(plain_text_token.encode('utf-8')).hexdigest()
     
@@ -147,6 +155,10 @@ async def websocket_endpoint(
     token: Optional[str] = Query(None), 
     db: Session = Depends(get_db)
 ):
+    """
+    Rationale: Establishes a secure WebSocket connection for real-time alert streaming.
+    Utilizes JWT decoding to enforce Data Isolation: Users only receive WebSocket frames relevant to their assigned server IPs.
+    """
     allowed_ips = []
     if token:
         try:
@@ -210,7 +222,7 @@ def get_all_logs(
         logger.error(f"ClickHouse query error: {e}")
         return {"error": "Internal server error"}
 
-# ================= AUTHENTICATION =================
+# ================= AUTHENTICATION & ORGANIZATION MANAGEMENT =================
 class UserCreate(BaseModel):
     email: str = Field(..., max_length=255, pattern=r"^\S+@\S+\.\S+$")
     username: str = Field(..., min_length=3, max_length=100)
@@ -228,6 +240,9 @@ class TeamRegisterRequest(BaseModel):
     use_case: str = Field(..., max_length=100)
     tax_id: Optional[str] = Field(None, max_length=50)
     description: Optional[str] = Field(None, max_length=1000)
+
+class TeamActionRequest(BaseModel):
+    action: str = Field(..., pattern="^(approve|reject)$")
 
 @app.post("/api/auth/register")
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
@@ -267,6 +282,93 @@ def get_user_profile(current_user: User = Depends(get_current_user)):
         "phone": getattr(current_user, "phone", None),
         "is_superadmin": getattr(current_user, "is_superadmin", False)
     }
+
+@app.post("/api/teams/request")
+def request_team(request_data: TeamRegisterRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Rationale: Processes a tenant (organization) creation request.
+    Defaults to 'pending' status requiring superadmin approval to prevent abuse and manage resource allocation.
+    """
+    existing_team = db.query(Team).filter(Team.unique_name == request_data.unique_name).first()
+    if existing_team:
+        raise HTTPException(status_code=400, detail="Organization unique name already exists.")
+
+    new_team = Team(
+        name=request_data.name,
+        unique_name=request_data.unique_name,
+        company_email=request_data.company_email,
+        company_phone=request_data.company_phone,
+        industry=request_data.industry,
+        company_size=request_data.company_size,
+        timezone_region=request_data.timezone_region,
+        use_case=request_data.use_case,
+        tax_id=request_data.tax_id,
+        description=request_data.description,
+        status="pending"
+    )
+    db.add(new_team)
+    db.flush()
+
+    owner_member = TeamMember(
+        user_id=current_user.id,
+        team_id=new_team.id,
+        role="owner"
+    )
+    db.add(owner_member)
+    db.commit()
+    return {"message": "Organization request submitted successfully. Pending admin approval."}
+
+@app.get("/api/admin/teams/pending")
+def get_pending_teams(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Rationale: Retrieves all metadata for pending tenants to allow informed administrative decisions.
+    Enforces strict Superadmin RBAC.
+    """
+    if not getattr(current_user, "is_superadmin", False):
+        raise HTTPException(status_code=403, detail="Superadmin privileges required.")
+
+    teams = db.query(Team).filter(Team.status == "pending").all()
+    result = []
+    for team in teams:
+        owner_email = "Unknown"
+        owner = db.query(TeamMember).filter(TeamMember.team_id == team.id, TeamMember.role == "owner").first()
+        if owner:
+            user = db.query(User).filter(User.id == owner.user_id).first()
+            if user:
+                owner_email = user.email
+
+        result.append({
+            "id": str(team.id),
+            "name": team.name,
+            "unique_name": team.unique_name,
+            "company_email": team.company_email,
+            "company_phone": team.company_phone, 
+            "industry": team.industry,
+            "company_size": team.company_size, 
+            "timezone_region": team.timezone_region, 
+            "tax_id": team.tax_id, 
+            "use_case": team.use_case, 
+            "description": team.description,
+            "created_at": team.created_at.isoformat() if team.created_at else None,
+            "owner_email": owner_email
+        })
+    return {"teams": result}
+
+@app.post("/api/admin/teams/{team_id}/action")
+def process_team_request(team_id: str, payload: TeamActionRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Rationale: Handles state transitions for tenant onboarding (approval or rejection).
+    """
+    if not getattr(current_user, "is_superadmin", False):
+        raise HTTPException(status_code=403, detail="Superadmin privileges required.")
+
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Organization not found.")
+
+    team.status = "active" if payload.action == "approve" else "rejected"
+    db.commit()
+    return {"message": f"Organization successfully {team.status}."}
 
 @app.get("/api/teams/my-teams")
 def get_my_teams(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -346,11 +448,11 @@ class HeartbeatPayload(BaseModel):
 def agent_heartbeat(payload: HeartbeatPayload, server: Server = Depends(verify_agent_auth), db: Session = Depends(get_db)):
     if payload.module == "monitor":
         server.monitor_status = "active"
-        server.status = "active" # Monitor active là hệ thống xem như đã Online một nửa
-        logger.info(f"🟢 [HEARTBEAT] Monitor Module on {server.ip_address} is ACTIVE.")
+        server.status = "active" 
+        logger.info(f"[HEARTBEAT] Monitor Module on {server.ip_address} is ACTIVE.")
     elif payload.module == "defender":
         server.defender_status = "active"
-        logger.info(f"🛡️ [HEARTBEAT] Defender Module on {server.ip_address} is ACTIVE.")
+        logger.info(f"[HEARTBEAT] Defender Module on {server.ip_address} is ACTIVE.")
         
     db.commit()
     return {"status": "success", "message": f"{payload.module} is running and connected."}
@@ -400,24 +502,24 @@ def get_install_script(module_name: str):
     if module_name == "monitor":
         script = f"""#!/bin/bash
 echo "=========================================================="
-echo " 🚀 INITIALIZING FLUX SOC MONITOR (REAL-TIME MODE) 🚀 "
+echo " INITIALIZING FLUX SOC MONITOR (REAL-TIME MODE) "
 echo "=========================================================="
 TOKEN=$1
 
 if [ -z "$TOKEN" ]; then
-    echo "❌ ERROR: Deployment Token is missing."
+    echo "ERROR: Deployment Token is missing."
     exit 1
 fi
 
-echo "⏳ [1/5] Preparing environment..."
+echo "[1/5] Preparing environment..."
 wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo gpg --dearmor -o /usr/share/keyrings/elastic-keyring.gpg --yes > /dev/null 2>&1
 echo "deb [signed-by=/usr/share/keyrings/elastic-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main" | sudo tee /etc/apt/sources.list.d/elastic-8.x.list > /dev/null
 
-echo "⏳ [2/5] Installing Filebeat..."
+echo "[2/5] Installing Filebeat..."
 sudo apt-get update -qq > /dev/null 2>&1
 sudo apt-get install filebeat -y -qq > /dev/null 2>&1
 
-echo "⏳ [3/5] Configuring Data Pipeline (Instant Mode)..."
+echo "[3/5] Configuring Data Pipeline (Instant Mode)..."
 sudo mv /etc/filebeat/filebeat.yml /etc/filebeat/filebeat.yml.bak 2>/dev/null
 
 cat << CONFIG | sudo tee /etc/filebeat/filebeat.yml > /dev/null
@@ -483,30 +585,29 @@ output.kafka:
 
 queue.mem:
   events: 4096
-  flush.min_events: 1    # Đẩy ngay lập tức khi có 1 log
-  flush.timeout: 0.1s    # Thời gian chờ đẩy cực ngắn
+  flush.min_events: 1    
+  flush.timeout: 0.1s    
 CONFIG
 
-echo "⏳ [4/5] Starting Flux Monitor Service..."
+echo "[4/5] Starting Flux Monitor Service..."
 sudo systemctl daemon-reload
 sudo systemctl enable filebeat > /dev/null 2>&1
 sudo systemctl restart filebeat
 
-echo "⏳ [5/5] Transmitting Heartbeat to SOC Engine..."
+echo "[5/5] Transmitting Heartbeat to SOC Engine..."
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{{"module": "monitor"}}' {api_base_url}/api/agent/heartbeat > /dev/null
 
 echo -e "\\n=========================================================="
-echo " ✅ REAL-TIME MONITORING ACTIVATED."
+echo " REAL-TIME MONITORING ACTIVATED."
 echo "=========================================================="
 """
     elif module_name == "defender":
-        # Giữ nguyên script defender cũ nhưng đồng bộ tiếng Anh
         script = f"""#!/bin/bash
 echo "=========================================================="
-echo " 🛡️ INITIALIZING FLUX ACTIVE DEFENDER (IPS MODE) 🛡️ "
+echo " INITIALIZING FLUX ACTIVE DEFENDER (IPS MODE) "
 echo "=========================================================="
 TOKEN=$1
-if [ -z "$TOKEN" ]; then echo "❌ ERROR: Missing Token"; exit 1; fi
+if [ -z "$TOKEN" ]; then echo "ERROR: Missing Token"; exit 1; fi
 
 sudo apt update -qq > /dev/null 2>&1
 sudo apt install python3-pip python3.12-venv -y -qq > /dev/null 2>&1
@@ -562,6 +663,6 @@ sudo ufw allow from {backend_host} to any port 8001 > /dev/null 2>&1 || true
 
 curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{{"module": "defender"}}' {api_base_url}/api/agent/heartbeat > /dev/null
 
-echo "✅ ACTIVE DEFENDER DEPLOYED."
+echo "ACTIVE DEFENDER DEPLOYED."
 """
     return script
