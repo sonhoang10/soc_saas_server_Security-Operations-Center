@@ -69,8 +69,8 @@ npm install pm2 -g
 ```
 
 ### Step 2.2: Environment Variables
-Create a .env file in the root directory based on [example.env](example.env)
-Create a .env file in the Flux (frontend) directory based on [Flux/example.env](example.env)
+- Create a .env file in the root directory based on [example.env](example.env)
+- Create a .env file in the Flux (frontend) directory based on [example.env](Flux/example.env)
 ### Step 2.3: Database Migration
 First, install and configure PostgreSQL:
 ```bash
