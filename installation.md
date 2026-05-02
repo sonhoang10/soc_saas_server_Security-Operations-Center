@@ -115,6 +115,7 @@ sudo apt-get install -y nodejs
 node -v
 rm -rf node_modules package-lock.json
 npm install
+npm install axios
 npm run build
 cd ..
 ```
