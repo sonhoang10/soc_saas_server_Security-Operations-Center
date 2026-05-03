@@ -58,9 +58,7 @@ git clone https://github.com/sonhoang10/soc_saas_server_Security-Operations-Cent
 cd ~/Flux-SOC
 
 sudo apt update
-apt install python3-pip
-apt install python3.12-venv
-apt install npm
+apt install python3-pip python3.12-venv npm
 
 python3 -m venv soc_env
 source soc_env/bin/activate
