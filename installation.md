@@ -101,6 +101,9 @@ Start ClickHouse:
 ```bash
 sudo systemctl start clickhouse-server
 sudo systemctl enable clickhouse-server
+
+# Initialize the soc_db database required by the Kafka Consumer
+clickhouse-client --query="CREATE DATABASE IF NOT EXISTS soc_db;"
 clickhouse-client
 ```
 
