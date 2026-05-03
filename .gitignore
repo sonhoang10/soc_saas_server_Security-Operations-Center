@@ -11,6 +11,7 @@ venv/
 env/
 .coverage
 htmlcov/
+IP2LOCATION-LITE-DB11.BIN
 
 # ==========================================
 # NODEJS & FRONTEND (Root & Flux module)

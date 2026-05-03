@@ -202,6 +202,26 @@ sudo pm2 save
 sudo pm2 startup
 ```
 
+## 7. Initializing the Geolocation Database
+The Logic Engine requires the IP2Location binary database for real-time IP enrichment. Due to cloud provider limits and authentication requirements, this file must be uploaded manually.
+#### Step 7.1: Download the Database to your Local Machine
+Download the IP2LOCATION-LITE-DB11.BIN file directly from this Google Drive link to your personal computer:
+- ##### Download Link: [IP2LOCATION-LITE-DB11.BIN](https://drive.google.com/file/d/1wNKc2WdS31OFKC62BFVb3lZIDWT-sg05/view?usp=drive_link)
+(Alternatively, register at lite.ip2location.com to download the latest IP2location BIN format).
+#### Step 7.2: Upload to the Main SOC Server via SCP
+Once downloaded, open a terminal on your local machine and securely copy the file to your SOC Server using SCP:
+```bash
+# Replace 'your_server_ip' with your Main SOC Server's IP address
+# Replace the path with the actual location of the downloaded file
+scp /path/to/local/IP2LOCATION-LITE-DB11.BIN root@your_server_ip:~/Flux-SOC/
+```
+#### Step 7.3: Verify Deployment
+SSH into your Main SOC Server and ensure the file is in the root of the Flux-SOC directory so the Logic Engine can access it:
+```bash
+cd ~/Flux-SOC
+ls -la | grep IP2LOCATION
+```
+Ensure the engine environment variable or configuration points to this file.
 ## Troubleshooting commands
 ```Bash
 # Check service logs (Run on Main Server)
