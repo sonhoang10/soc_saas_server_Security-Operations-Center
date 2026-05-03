@@ -39,7 +39,7 @@ Before starting the Flux services, ensure the following core infrastructure comp
 1. **PostgreSQL**: For relational metadata (Users, Teams, Server Status).
 2. **ClickHouse**: For lightning-fast columnar log storage. Port `8123` (HTTP).
 3. **Apache Kafka & Zookeeper (or KRaft)**: Port `9092`.
-4. **Node.js (v18+) & PM2**: For building the frontend and managing background processes.
+4. **Node.js (v20+) & PM2**: For building the frontend and managing background processes.
 5. **Python 3.12+**: For the backend engines.
 
 Ensure your Cloud Firewall allows inbound traffic on:
