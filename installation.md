@@ -202,7 +202,8 @@ sudo pm2 save
 sudo pm2 startup
 ```
 
-## 7. Initializing the Geolocation Database
+## 7. Initializing the Geolocation Database (OPTIONAL)
+#### Note: You don't have to download database ip2location because the worldmap function has fallback using GeoIPEngine.
 The Logic Engine requires the IP2Location binary database for real-time IP enrichment. Due to cloud provider limits and authentication requirements, this file must be uploaded manually.
 #### Step 7.1: Download the Database to your Local Machine
 Download the IP2LOCATION-LITE-DB11.BIN file directly from this Google Drive link to your personal computer:
@@ -222,6 +223,7 @@ cd ~/Flux-SOC
 ls -la | grep IP2LOCATION
 ```
 Ensure the engine environment variable or configuration points to this file.
+
 ## Troubleshooting commands
 ```Bash
 # Check service logs (Run on Main Server)
