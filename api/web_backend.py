@@ -30,6 +30,9 @@ from api.auth_utils import (
 )
 from api.crypto_utils import generate_enterprise_key
 
+# Import the newly created GeoIP Engine
+from core.geoip_engine import geoip_engine
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
@@ -41,10 +44,6 @@ INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY", "flux-soc-internal-secret-2026"
 api_key_header = APIKeyHeader(name="X-Internal-Token", auto_error=True)
 
 def verify_internal_service(api_key: str = Depends(api_key_header)):
-    """
-    Rationale: Validates machine-to-machine communication integrity.
-    Prevents unauthorized endpoints from injecting arbitrary alerts into the WebSocket broadcast stream.
-    """
     if api_key != INTERNAL_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
@@ -55,10 +54,6 @@ def verify_internal_service(api_key: str = Depends(api_key_header)):
 security = HTTPBearer()
 
 def verify_agent_auth(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
-    """
-    Rationale: Authenticates external client agents (Filebeat/Defender) using SHA-256 hashed tokens.
-    Token hashes are stored in the database to mitigate exposure risks if the primary database is compromised.
-    """
     plain_text_token = credentials.credentials
     incoming_hash = hashlib.sha256(plain_text_token.encode('utf-8')).hexdigest()
     
@@ -67,11 +62,18 @@ def verify_agent_auth(credentials: HTTPAuthorizationCredentials = Depends(securi
         raise HTTPException(status_code=401, detail="Invalid or Revoked Agent Token")
     return server
 
+# Global database clients
 ch_client = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global ch_client
+    
+    # 1. Initialize GeoIP Engine Delegation
+    db_path = os.path.join(BASE_DIR, "IP2LOCATION-LITE-DB11.BIN")
+    geoip_engine.initialize(db_path)
+
+    # 2. Initialize ClickHouse
     try:
         logger.info("Connecting to ClickHouse...")
         ch_client = clickhouse_connect.get_client(
@@ -84,6 +86,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"ClickHouse initialization failed: {e}")
 
+    # 3. Initialize PostgreSQL
     logger.info("Connecting to PostgreSQL...")
     is_pg_ok, pg_msg = test_db_connection()
     if is_pg_ok:
@@ -92,8 +95,11 @@ async def lifespan(app: FastAPI):
         logger.error(pg_msg)
         
     yield
-    logger.info("Closing ClickHouse connection...")
+    
+    # Cleanup resources
+    logger.info("Closing database connections...")
     ch_client = None
+    geoip_engine.shutdown()
 
 app = FastAPI(title="SOC Web Backend", lifespan=lifespan)
 
@@ -155,10 +161,6 @@ async def websocket_endpoint(
     token: Optional[str] = Query(None), 
     db: Session = Depends(get_db)
 ):
-    """
-    Rationale: Establishes a secure WebSocket connection for real-time alert streaming.
-    Utilizes JWT decoding to enforce Data Isolation: Users only receive WebSocket frames relevant to their assigned server IPs.
-    """
     allowed_ips = []
     if token:
         try:
@@ -182,6 +184,21 @@ async def websocket_endpoint(
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+# ================= INTERNAL GEOIP API =================
+@app.get("/api/geoip/{ip_address}")
+def resolve_geoip_endpoint(ip_address: str, current_user: User = Depends(get_current_user)):
+    """
+    Rationale: Exposes the internal GeoIP resolution capability via REST API.
+    Delegates complex lookup logic to the core GeoIPEngine.
+    """
+    result = geoip_engine.resolve(ip_address)
+    if result.get("success"):
+        return result
+    
+    # Standardize HTTP status codes for enterprise APIs
+    status_code = 503 if "not initialized" in result.get("message", "") else 404
+    raise HTTPException(status_code=status_code, detail=result.get("message"))
 
 @app.get("/api/logs")
 def get_all_logs(
@@ -285,10 +302,6 @@ def get_user_profile(current_user: User = Depends(get_current_user)):
 
 @app.post("/api/teams/request")
 def request_team(request_data: TeamRegisterRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """
-    Rationale: Processes a tenant (organization) creation request.
-    Defaults to 'pending' status requiring superadmin approval to prevent abuse and manage resource allocation.
-    """
     existing_team = db.query(Team).filter(Team.unique_name == request_data.unique_name).first()
     if existing_team:
         raise HTTPException(status_code=400, detail="Organization unique name already exists.")
@@ -320,10 +333,6 @@ def request_team(request_data: TeamRegisterRequest, current_user: User = Depends
 
 @app.get("/api/admin/teams/pending")
 def get_pending_teams(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """
-    Rationale: Retrieves all metadata for pending tenants to allow informed administrative decisions.
-    Enforces strict Superadmin RBAC.
-    """
     if not getattr(current_user, "is_superadmin", False):
         raise HTTPException(status_code=403, detail="Superadmin privileges required.")
 
@@ -356,9 +365,6 @@ def get_pending_teams(current_user: User = Depends(get_current_user), db: Sessio
 
 @app.post("/api/admin/teams/{team_id}/action")
 def process_team_request(team_id: str, payload: TeamActionRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """
-    Rationale: Handles state transitions for tenant onboarding (approval or rejection).
-    """
     if not getattr(current_user, "is_superadmin", False):
         raise HTTPException(status_code=403, detail="Superadmin privileges required.")
 
