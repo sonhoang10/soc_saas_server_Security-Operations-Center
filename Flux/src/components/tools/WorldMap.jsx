@@ -2,6 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+// ==========================================
+// SYSTEM CONFIGURATION
+// ==========================================
+const MARKER_DISPLAY_DURATION_MS = 10000; // Config show time of alert on maps (10000ms = 10s)
+
 const backendURL = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:8000`;
 const wsURL = backendURL.replace(/^http/, 'ws');
 
@@ -64,11 +69,12 @@ const MapSecurity = () => {
       </div>`
     ).openPopup();
     
+    // Tự động gỡ bỏ marker sau khoảng thời gian được cấu hình
     setTimeout(() => {
       if (mapInstanceRef.current && mapInstanceRef.current.hasLayer(marker)) {
         marker.remove();
       }
-    }, 6000);
+    }, MARKER_DISPLAY_DURATION_MS);
   };
 
   // ==========================================

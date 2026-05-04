@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import StatsCard from '/src/components/tools/StatsCard';
 import SecurityTable from '/src/components/tools/SecurityTable';
 import {Select} from '/src/components/tools/items.jsx';
-import BandwidthUsage from '/src/components/tools/bandwith.jsx';
+import BandwidthUsage from '../../tools/Bandwidth.jsx';
 
 import {
    ShieldAlert,  LogIn, UserX , Building2, LineChart, ArrowRight, CodeXml, CircleCheck, CircleAlert

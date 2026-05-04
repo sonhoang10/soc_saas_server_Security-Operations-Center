@@ -1,44 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import StatsCard from '/src/components/tools/StatsCard';
-import BandwidthUsage from '/src/components/tools/bandwith.jsx';
+import BarChart from '../../tools/BarChart.jsx';
+import BandwidthUsage from '../../tools/Bandwidth.jsx';
 import {
-   ShieldAlert, LogIn, UserX, Building2, LineChart, ArrowRight, CodeXml, CircleCheck, CircleAlert, Activity, Server
+   ShieldAlert, LogIn, UserX, CodeXml, CircleCheck, CircleAlert, Activity, Server, Bot
 } from 'lucide-react';
 
-// Sử dụng window.location.hostname để đồng bộ hoàn toàn với file Attacks đã chạy thành công
 const backendURL = `http://${window.location.hostname}:8000`;
 const wsURL = `ws://${window.location.hostname}:8000`;
+const logicEngineURL = `http://${window.location.hostname}:8001`;
 
 const MainScreen = () => {
-  // ==========================================
-  // 1. STATE MANAGEMENT
-  // ==========================================
   const [serverInfo, setServerInfo] = useState({ 
     id: '', ip: '', name: 'Resolving Context...', 
-    status: 'offline', monitor_status: 'pending' 
+    status: 'offline', monitor_status: 'pending', defender_status: 'pending'
   });
   const [loading, setLoading] = useState(true);
   const [IsDown, setIsDown] = useState(false);
+  const [autoBanEnabled, setAutoBanEnabled] = useState(false);
   
   const [stats, setStats] = useState({
-    totalEvents: 0,
+    totalEventsToday: 0,
     criticalAlerts: 0,
-    autoBlocks: 0
+    bannedIpsCount: 0
   });
 
-  // Chart Data: Mảng 10 phần tử đại diện cho cửa sổ thời gian (Sliding Window)
-  const [chartData, setChartData] = useState(Array(10).fill(0));
-  const currentTickAlerts = useRef(0);
+  const [rawAlerts, setRawAlerts] = useState([]);
+  const [networkSpike, setNetworkSpike] = useState(0);
 
   const [log, setLog] = useState(() => {
     const savedLog = sessionStorage.getItem('flux_client_logs');
     return savedLog ? JSON.parse(savedLog) : [];
   });
 
-  // ==========================================
-  // 2. FETCH SERVER CONTEXT & HISTORICAL DATA
-  // ==========================================
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const targetServerId = urlParams.get('server_id');
@@ -53,7 +48,6 @@ const MainScreen = () => {
 
     const fetchServerDetailsAndLogs = async () => {
       try {
-        // 2.1 Fetch Server Context
         const response = await axios.get(`${backendURL}/api/servers/my-servers?team_id=${teamId}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
@@ -68,37 +62,56 @@ const MainScreen = () => {
               ip: cleanIp, 
               name: currentServer.name, 
               status: currentServer.status,
-              monitor_status: currentServer.monitor_status
+              monitor_status: currentServer.monitor_status,
+              defender_status: currentServer.defender_status
           });
 
-          // 2.2 Fetch Historical Logs from ClickHouse (Giải quyết triệt để lỗi Cold Start)
-          try {
-            const logsRes = await axios.get(`${backendURL}/api/logs?team_id=${teamId}&limit=100`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            
-            if (logsRes.data && logsRes.data.logs) {
-                const serverLogs = logsRes.data.logs.filter(l => l.target_ip === cleanIp);
-                
-                // Format data từ Database để hiển thị lên Terminal UI
-                const formattedLogs = serverLogs.map(l => {
-                    const actionContext = l.action !== "Unknown" ? l.action : "System Event";
-                    const userContext = l.username !== "-" ? `(${l.username})` : "";
-                    return `[${l.timestamp}] INFO: ${l.log_type.toUpperCase()} - ${actionContext} ${userContext}`;
-                }).reverse(); // Đảo ngược mảng để log cũ ở trên, mới ở dưới
-                
-                if (formattedLogs.length > 0) {
-                    setLog(formattedLogs.slice(-50)); // Giữ 50 dòng mới nhất tránh tràn RAM
-                }
+          const todayString = new Date().toISOString().split('T')[0];
 
-                setStats(prev => ({
-                    ...prev,
-                    totalEvents: serverLogs.length
-                }));
-            }
-          } catch (logErr) {
-             console.error("Historical logs fetch error:", logErr);
+          const [alertsRes, logsRes, bannedRes, autobanRes] = await Promise.allSettled([
+              axios.get(`${backendURL}/api/alerts/history?server_id=${currentServer.id}&limit=1000`, { headers: { Authorization: `Bearer ${token}` } }),
+              axios.get(`${backendURL}/api/logs?team_id=${teamId}&limit=100`, { headers: { Authorization: `Bearer ${token}` } }),
+              axios.get(`${logicEngineURL}/api/banned_ips`),
+              axios.get(`${logicEngineURL}/api/autoban/status`)
+          ]);
+
+          let todayAlertsCount = 0;
+          let criticalCount = 0;
+          if (alertsRes.status === 'fulfilled' && alertsRes.value.data) {
+              const alerts = alertsRes.value.data;
+              setRawAlerts(alerts);
+              todayAlertsCount = alerts.filter(a => a.time.startsWith(todayString)).length;
+              criticalCount = alerts.filter(a => a.level.toLowerCase() === 'critical').length;
           }
+
+          if (logsRes.status === 'fulfilled' && logsRes.value.data?.logs) {
+              const serverLogs = logsRes.value.data.logs.filter(l => l.target_ip === cleanIp);
+              const formattedLogs = serverLogs.map(l => {
+                  const actionContext = l.action !== "Unknown" ? l.action : "System Event";
+                  const userContext = l.username !== "-" ? `(${l.username})` : "";
+                  return `[${l.timestamp}] INFO: ${l.log_type.toUpperCase()} - ${actionContext} ${userContext}`;
+              }).reverse(); 
+              
+              if (formattedLogs.length > 0) {
+                  setLog(formattedLogs.slice(-50)); 
+              }
+          }
+
+          let bannedCount = 0;
+          if (bannedRes.status === 'fulfilled' && bannedRes.value.data?.banned) {
+              bannedCount = bannedRes.value.data.banned.filter(b => b.target_server === cleanIp).length;
+          }
+
+          if (autobanRes.status === 'fulfilled' && autobanRes.value.data) {
+              setAutoBanEnabled(autobanRes.value.data.enabled);
+          }
+
+          setStats(prev => ({
+              ...prev,
+              totalEventsToday: todayAlertsCount,
+              criticalAlerts: criticalCount,
+              bannedIpsCount: bannedCount
+          }));
 
         } else {
           setServerInfo(prev => ({ ...prev, name: 'Server Not Found', status: 'error' }));
@@ -114,9 +127,6 @@ const MainScreen = () => {
     fetchServerDetailsAndLogs();
   }, []);
 
-  // ==========================================
-  // 3. WEBSOCKET & REAL-TIME CHART PIPELINE
-  // ==========================================
   useEffect(() => {
     if (!serverInfo.ip || serverInfo.ip === 'Unknown' || serverInfo.status === 'error') return;
 
@@ -128,14 +138,11 @@ const MainScreen = () => {
     ws.onmessage = (event) => {
       try {
         const alertData = JSON.parse(event.data);
-        
-        // CHỐT CHẶN BẢO MẬT: Bắt cả 'target_server' và 'target_ip'
         const alertTargetIp = alertData.target_server || alertData.target_ip;
 
         if (alertTargetIp === serverInfo.ip) {
           const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
           
-          // 3.1 Update Terminal Logs 
           setLog(prev => {
             const newLogs = [...prev, `[${timestamp}] ${alertData.level || 'WARN'}: ${alertData.type} from ${alertData.ip}`];
             if (newLogs.length > 50) newLogs.shift(); 
@@ -143,20 +150,25 @@ const MainScreen = () => {
             return newLogs;
           });
 
-          // 3.2 Update Chart Tick Accumulator
-          currentTickAlerts.current += 1;
+          setRawAlerts(prev => [{
+            time: timestamp,
+            level: alertData.level,
+            type: alertData.type,
+            ip: alertData.ip,
+            status: "new"
+          }, ...prev]);
 
-          // 3.3 Update Stats Cards
           setStats(prev => {
             const updates = { ...prev };
-            updates.totalEvents += 1;
-            if (alertData.level === 'CRITICAL' || alertData.level === 'Red Alert') updates.criticalAlerts += 1;
-            if (alertData.analysis && alertData.analysis.includes('Ban')) updates.autoBlocks += 1;
+            updates.totalEventsToday += 1;
+            if (alertData.level === 'Critical' || alertData.level === 'Red Alert') updates.criticalAlerts += 1;
+            if (alertData.analysis && alertData.analysis.includes('Ban')) updates.bannedIpsCount += 1;
             return updates;
           });
 
-          // 3.4 Trigger Visual Warning
-          if (alertData.level === 'CRITICAL') {
+          setNetworkSpike(prev => prev + 1);
+
+          if (alertData.level === 'Critical' || alertData.level === 'Red Alert') {
             setIsDown(true);
             setTimeout(() => setIsDown(false), 5000); 
           }
@@ -166,27 +178,18 @@ const MainScreen = () => {
       }
     };
 
-    // Tự động vẽ biểu đồ Realtime bằng Sliding Window (Mỗi 3 giây chạy 1 nhịp)
-    const chartInterval = setInterval(() => {
-      setChartData(prevData => {
-        const newData = [...prevData.slice(1), currentTickAlerts.current];
-        currentTickAlerts.current = 0; 
-        return newData;
-      });
-    }, 3000);
+    const cooldownInterval = setInterval(() => {
+        setNetworkSpike(prev => (prev > 0 ? prev - 0.5 : 0));
+    }, 1000);
 
     return () => {
       if (ws.readyState === 1) ws.close();
-      clearInterval(chartInterval);
+      clearInterval(cooldownInterval);
     };
   }, [serverInfo.ip]);
 
-  const maxChartValue = Math.max(...chartData, 10); 
   const isMonitorActive = serverInfo.monitor_status === 'active';
 
-  // ==========================================
-  // 4. MAIN RENDER
-  // ==========================================
   if (loading) {
       return (
           <div className="flex-1 p-8 flex items-center justify-center">
@@ -202,27 +205,41 @@ const MainScreen = () => {
       <div className="flex-1 p-4 md:p-8 space-y-6 md:space-y-8 overflow-y-auto flux-scrollbar overflow-x-hidden">  
         
         {/* HEADER CONTEXT */}
-        <div className="flex items-center gap-3 pb-4 border-b border-[#3e3e3e]">
-            <div className="p-3 bg-[#3ecf8e]/10 rounded-lg border border-[#3ecf8e]/20 text-[#3ecf8e]">
-              <Server size={24} />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#3e3e3e]">
+            <div className="flex items-center gap-3">
+                <div className="p-3 bg-[#3ecf8e]/10 rounded-lg border border-[#3ecf8e]/20 text-[#3ecf8e]">
+                  <Server size={24} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-3">
+                      <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">{serverInfo.name}</h1>
+                      {isMonitorActive ? (
+                          <span className="px-2 py-1 bg-green-500/10 border border-green-500/20 text-green-500 text-[10px] uppercase font-bold tracking-wider rounded flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Online
+                          </span>
+                      ) : (
+                          <span className="px-2 py-1 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-[10px] uppercase font-bold tracking-wider rounded flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span> Pending
+                          </span>
+                      )}
+                  </div>
+                  <p className="text-xs md:text-sm text-[#a0a0a0] font-mono flex items-center gap-2 mt-1">
+                      <Activity size={14} className="text-[#3ecf8e]" />
+                      Bound IP: {serverInfo.ip}
+                  </p>
+                </div>
             </div>
-            <div>
-              <div className="flex items-center gap-3">
-                  <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">{serverInfo.name}</h1>
-                  {isMonitorActive ? (
-                      <span className="px-2 py-1 bg-green-500/10 border border-green-500/20 text-green-500 text-[10px] uppercase font-bold tracking-wider rounded flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Online
-                      </span>
-                  ) : (
-                      <span className="px-2 py-1 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-[10px] uppercase font-bold tracking-wider rounded flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span> Pending
-                      </span>
-                  )}
-              </div>
-              <p className="text-xs md:text-sm text-[#a0a0a0] font-mono flex items-center gap-2 mt-1">
-                  <Activity size={14} className="text-[#3ecf8e]" />
-                  Bound IP: {serverInfo.ip}
-              </p>
+
+            <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border ${autoBanEnabled ? 'bg-[#3ecf8e]/10 border-[#3ecf8e]/30' : 'bg-[#1c1c1c] border-[#3e3e3e]'}`}>
+                 <Bot size={20} className={autoBanEnabled ? "text-[#3ecf8e] animate-pulse" : "text-[#5a5a5a]"} />
+                 <div>
+                    <p className={`text-[10px] uppercase tracking-wider font-bold ${autoBanEnabled ? 'text-[#3ecf8e]' : 'text-[#a0a0a0]'}`}>
+                        Auto-Ban IPS
+                    </p>
+                    <p className="text-xs font-mono text-white font-bold">
+                        {autoBanEnabled ? 'Active' : 'Disabled'}
+                    </p>
+                 </div>
             </div>
         </div>
 
@@ -262,44 +279,17 @@ const MainScreen = () => {
 
         {/* STATS SECTION */}
         <section className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 transition-opacity duration-300 ${!isMonitorActive ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-          <StatsCard title="Total Threats Detected" value={stats.totalEvents.toLocaleString()} trend="Session tracked" icon={<LogIn size={20}/>} color="sbTeal" />
+          <StatsCard title="Total Threats Detected" value={stats.totalEventsToday.toLocaleString()} trend="Today" icon={<LogIn size={20}/>} color="sbTeal" />
           <StatsCard title="Critical Alerts" value={stats.criticalAlerts.toLocaleString()} trend="Requires review" icon={<ShieldAlert size={20}/>} color="sbRed" isAlert={stats.criticalAlerts > 0} />
-          <StatsCard title="Auto Block (SOAR)" value={stats.autoBlocks.toLocaleString()} trend="IPs mitigated" icon={<UserX size={20}/>} color="sbYellow" />
+          <StatsCard title="Banned IPs" value={stats.bannedIpsCount.toLocaleString()} trend="Access denied" icon={<UserX size={20}/>} color="sbYellow" />
         </section>
 
         {/* CHARTS & LOGS SECTION */}
         <section className={`grid grid-cols-1 xl:grid-cols-3 gap-6 transition-opacity duration-300 ${!isMonitorActive ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
           
-          {/* REAL-TIME LINE GRAPH */}
-          <div className="xl:col-span-2 bg-[#2a2a2a] p-6 rounded-xl border border-[#3e3e3e] shadow-lg flex flex-col h-[400px]">
-            <div className="flex items-center gap-3 mb-6">
-              <LineChart className="text-[#3ecf8e]" size={24} />
-              <h2 className="text-lg font-semibold">Real-Time Threat Frequency (Tick/3s)</h2>
-              <button className="ml-auto text-xs text-[#3ecf8e] hover:underline flex items-center gap-1">
-                Live Data <ArrowRight size={12} />
-              </button>
-            </div>
-            
-            <div className="flex-1 w-full flex items-end gap-2 relative border-b border-l border-[#3e3e3e]/50 pb-1 pl-1">
-              {chartData.map((val, i) => {
-                const heightPercentage = Math.min((val / maxChartValue) * 100, 100);
-                return (
-                  <div 
-                    key={i} 
-                    style={{ height: `${heightPercentage}%`, minHeight: '2px' }} 
-                    className={`flex-1 rounded-t transition-all duration-300 relative group ${val > (maxChartValue * 0.7) ? 'bg-[#f87171] shadow-[0_0_8px_rgba(248,113,113,0.5)]' : 'bg-[#3ecf8e]/40 hover:bg-[#3ecf8e]/80'}`}
-                  >
-                    <span className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-2 left-1/2 -translate-x-1/2 text-[10px] bg-black text-white px-2 py-1 rounded pointer-events-none transition-opacity whitespace-nowrap z-10">
-                      {val} hits
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
+          <BarChart alerts={rawAlerts} />
 
-          {/* TERMINAL LOGS */}
-          <div className="bg-[#2a2a2a] p-6 rounded-xl border border-[#3e3e3e] shadow-lg flex flex-col h-[400px]">
+          <div className="xl:col-span-1 bg-[#2a2a2a] p-6 rounded-xl border border-[#3e3e3e] shadow-lg flex flex-col h-[400px]">
             <div className="flex items-center gap-3 mb-6">
               <CodeXml className="text-[#3ecf8e]" size={24} />
               <h2 className="text-lg font-semibold">Live Event Stream</h2>
@@ -341,7 +331,8 @@ const MainScreen = () => {
           </div>
         </section>
         
-        <BandwidthUsage />
+        <BandwidthUsage networkSpike={networkSpike} />
+
       </div>
   );
 };
