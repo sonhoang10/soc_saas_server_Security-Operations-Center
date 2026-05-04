@@ -3,12 +3,14 @@ import axios from 'axios';
 import { ClickOutsideWrapper, DropdownWrapper } from './items';
 import {
   Zap, LayoutGrid, Activity, Users,
-  FileKey2, Mail, LogOut, ShieldAlert, BriefcaseBusiness, LogIn, Settings, UserPen, BarChart3
+  FileKey2, Mail, LogOut, ShieldAlert, BriefcaseBusiness, LogIn, Settings, UserPen, BarChart3,
+  History // <--- Thêm Icon History từ Lucide-react
 } from 'lucide-react';
 import { useTabs } from '../TabContext.jsx';
 import SettingsModal from './settings.jsx';
 import { DownloadCloud } from 'lucide-react';
 
+// Rationale: Centralized menu configuration for RBAC-based dynamic rendering.
 const MENU_CONFIG = {
   admin: [
     { icon: <LayoutGrid size={20}/>, label: 'Dashboard', tab: 'Dashboard' },
@@ -20,8 +22,9 @@ const MENU_CONFIG = {
   client: [
     { icon: <LayoutGrid size={20}/>, label: 'Dashboard', tab: 'Client Dashboard' },
     { icon: <DownloadCloud size={20}/>, label: 'Agent Deployment', tab: 'Client Agent Deployment' },
-    { icon: <BarChart3 size={20}/>, label: 'Report', tab: 'Client Report' },
     { icon: <ShieldAlert size={20}/>, label: 'Current Attacks', tab: 'Client Current Attacks' },
+    { icon: <History size={20}/>, label: 'Audit History', tab: 'Client History Logs' }, // <--- Thêm nút bấm cho Tab mới
+    { icon: <BarChart3 size={20}/>, label: 'Report', tab: 'Client Report' },
   ],
   admin_extra: [
     { icon: <Users size={20}/>, label: 'Tenants', tab: null },
@@ -101,9 +104,9 @@ const Sidebar = ({ type = 'admin' }) => {
   };
 
   return (
-    <aside className="w-64 bg-[#1c1c1c] border-r border-[#3e3e3e] flex flex-col h-full">
+    <aside className="w-64 bg-[#1c1c1c] border-r border-[#3e3e3e] flex flex-col h-full shrink-0">
       {/* Logo Section */}
-      <div onClick={() => setActiveTab('Dashboard')} className="hover:cursor-pointer h-16 flex items-center gap-2 px-6 border-b border-[#3e3e3e]">
+      <div onClick={() => setActiveTab('Dashboard')} className="hover:cursor-pointer h-16 flex items-center gap-2 px-6 border-b border-[#3e3e3e] shrink-0">
         <Zap className="w-7 h-7 text-[#3ecf8e]" />
         <span className="text-xl font-bold text-white uppercase tracking-tight">
           Flux <span className="text-[#3ecf8e] text-xs font-mono ml-1">nk</span>
@@ -111,8 +114,8 @@ const Sidebar = ({ type = 'admin' }) => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
-        <div className="pt-6 pb-2">
+      <nav className="flex-1 p-4 space-y-2 overflow-y-auto flux-scrollbar">
+        <div className="pt-2 pb-2">
           <p className="px-4 text-[10px] font-bold text-[#a0a0a0] uppercase tracking-[0.2em]">
             {type === 'admin' ? 'Control' : 'Dashboard'}
           </p>
@@ -130,17 +133,17 @@ const Sidebar = ({ type = 'admin' }) => {
       </nav>
 
       {/* User Profile Section */}
-      <div className='relative'>
+      <div className='relative mt-auto shrink-0'>
         <ClickOutsideWrapper onClickOutside={() => setShowTab(false)}>
-          <div onClick={() => setShowTab(!ShowTab)} className="p-4 border-t border-[#3e3e3e] hover:bg-[#2a2a2a]/50 flex items-center gap-3 bg-[#1c1c1c] cursor-pointer">
-              <div className="w-10 h-10 rounded-full border border-[#3e3e3e] bg-[#2a2a2a] flex items-center justify-center text-[#3ecf8e] font-bold">
+          <div onClick={() => setShowTab(!ShowTab)} className="p-4 border-t border-[#3e3e3e] hover:bg-[#2a2a2a]/50 flex items-center gap-3 bg-[#1c1c1c] cursor-pointer transition-colors">
+              <div className="w-10 h-10 rounded-full border border-[#3e3e3e] bg-[#2a2a2a] flex items-center justify-center text-[#3ecf8e] font-bold shrink-0 shadow-inner">
                 {userInfo.initials}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm truncate text-white">{userInfo.username}</p>
                 <p className="text-xs text-[#a0a0a0] truncate">{userInfo.role}</p>
               </div>
-              <button onClick={handleLogout} className="text-[#a0a0a0] hover:text-[#f87171] transition">
+              <button onClick={handleLogout} className="text-[#a0a0a0] hover:text-[#f87171] transition p-1 shrink-0">
                 <LogOut size={18} />
               </button>
               
@@ -179,11 +182,13 @@ const NavItem = ({ icon, label, active, onClick }) => (
     className={`
       flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 w-full
       ${active 
-        ? 'bg-[#2a2a2a] text-[#3ecf8e] font-medium shadow-sm border-[#3e3e3e]' 
-        : 'text-[#a0a0a0] hover:text-white hover:bg-[#2a2a2a]/50'}
+        ? 'bg-[#2a2a2a] text-[#3ecf8e] font-medium shadow-sm border border-[#3e3e3e]' 
+        : 'text-[#a0a0a0] border border-transparent hover:text-white hover:bg-[#2a2a2a]/50'}
     `}
   >
-    {icon}
+    <div className={`${active ? 'scale-110' : ''} transition-transform duration-200`}>
+      {icon}
+    </div>
     <span className="text-sm">{label}</span>
   </button>
 );

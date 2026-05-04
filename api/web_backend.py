@@ -18,7 +18,7 @@ from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
 from api.database import get_db, test_db_connection
-from api.models import User, Team, TeamMember, Server
+from api.models import User, Team, TeamMember, Server, Alert # Nhập Alert model từ database
 from api.auth_utils import (
     get_password_hash, 
     verify_password, 
@@ -29,8 +29,6 @@ from api.auth_utils import (
     ALGORITHM
 )
 from api.crypto_utils import generate_enterprise_key
-
-# Import the newly created GeoIP Engine
 from core.geoip_engine import geoip_engine
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -69,7 +67,7 @@ ch_client = None
 async def lifespan(app: FastAPI):
     global ch_client
     
-    # 1. Initialize GeoIP Engine Delegation
+    # 1. Initialize GeoIP Engine
     db_path = os.path.join(BASE_DIR, "IP2LOCATION-LITE-DB11.BIN")
     geoip_engine.initialize(db_path)
 
@@ -96,7 +94,6 @@ async def lifespan(app: FastAPI):
         
     yield
     
-    # Cleanup resources
     logger.info("Closing database connections...")
     ch_client = None
     geoip_engine.shutdown()
@@ -138,7 +135,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# ================= VALIDATION SCHEMAS =================
+# ================= VALIDATION SCHEMAS (MOVED UP FOR DECLARATION ORDER) =================
 class AlertPayload(BaseModel):
     time: str
     level: str
@@ -149,11 +146,118 @@ class AlertPayload(BaseModel):
     target_server: Optional[str] = "Unknown"
     server: Optional[str] = "Unknown"
 
+class AlertHistoryResponse(BaseModel):
+    id: str
+    time: str
+    level: str
+    type: str
+    ip: str
+    status: str
+
+class UserCreate(BaseModel):
+    email: str = Field(..., max_length=255, pattern=r"^\S+@\S+\.\S+$")
+    username: str = Field(..., min_length=3, max_length=100)
+    password: str = Field(..., min_length=8, max_length=255)
+    phone: Optional[str] = Field(None, max_length=20)
+
+class TeamRegisterRequest(BaseModel):
+    name: str = Field(..., min_length=2, max_length=150)
+    unique_name: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-z0-9-]+$")
+    company_email: str = Field(..., max_length=255)
+    company_phone: str = Field(..., max_length=50)
+    industry: str = Field(..., max_length=100)
+    company_size: str = Field(..., max_length=50)
+    timezone_region: str = Field(..., max_length=100)
+    use_case: str = Field(..., max_length=100)
+    tax_id: Optional[str] = Field(None, max_length=50)
+    description: Optional[str] = Field(None, max_length=1000)
+
+class TeamActionRequest(BaseModel):
+    action: str = Field(..., pattern="^(approve|reject)$")
+
+class ServerCreateRequest(BaseModel):
+    team_id: str
+    name: str = Field(..., min_length=2, max_length=150)
+    ip_address: str = Field(..., min_length=3, max_length=255, pattern=r"^[a-zA-Z0-9.-]+$")
+
+class HeartbeatPayload(BaseModel):
+    module: str
+
+
+# ================= SOC CORE API: ALERTS & WEBSOCKETS =================
 @app.post("/api/alerts", dependencies=[Depends(verify_internal_service)])
-async def receive_alert(alert: AlertPayload):
+async def receive_alert(alert: AlertPayload, db: Session = Depends(get_db)):
+    """
+    Nhận Alert từ Logic Engine, Broadcast qua WebSocket,
+    VÀ lưu trữ vĩnh viễn vào PostgreSQL.
+    """
     logger.warning(f"Red Alert: {alert.type} from IP {alert.ip} targeting {alert.target_server}")
+    
+    # Bước 1: Tìm ID của Server dựa trên IP đích
+    target_server_record = db.query(Server).filter(
+        Server.ip_address.like(f"%{alert.target_server}%")
+    ).first()
+
+    # Bước 2: Lưu vào PostgreSQL nếu tìm thấy Server
+    if target_server_record:
+        try:
+            new_alert = Alert(
+                team_id=target_server_record.team_id,
+                server_id=target_server_record.id,
+                attacker_ip=alert.ip,
+                attack_type=alert.type,
+                severity=alert.level,
+                status="new"
+            )
+            db.add(new_alert)
+            db.commit()
+            logger.info(f"Alert persisted in PostgreSQL for Server ID: {target_server_record.id}")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to persist alert in PostgreSQL: {e}")
+
+    # Bước 3: Phát sóng Real-time qua WebSocket
     await manager.broadcast(alert.model_dump())
-    return {"status": "Broadcasted"}
+    
+    return {"status": "Broadcasted and Persisted"}
+
+@app.get("/api/alerts/history", response_model=List[AlertHistoryResponse])
+def get_alert_history(
+    server_id: str, 
+    limit: int = 100,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Truy vấn lịch sử cảnh báo an ninh đã được phân tích bởi Logic Engine.
+    """
+    server = db.query(Server).filter(Server.id == server_id).first()
+    if not server:
+         raise HTTPException(status_code=404, detail="Server not found.")
+
+    membership = db.query(TeamMember).filter(
+        TeamMember.user_id == current_user.id,
+        TeamMember.team_id == server.team_id
+    ).first()
+    if not membership and not getattr(current_user, "is_superadmin", False):
+        raise HTTPException(status_code=403, detail="Access denied.")
+
+    alerts = db.query(Alert).filter(
+        Alert.server_id == server.id
+    ).order_by(Alert.created_at.desc()).limit(limit).all()
+
+    result = []
+    for a in alerts:
+        result.append({
+            "id": str(a.id),
+            "time": a.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "level": a.severity,
+            "type": a.attack_type,
+            "ip": a.attacker_ip,
+            "status": a.status
+        })
+        
+    return result
 
 @app.websocket("/ws/alerts")
 async def websocket_endpoint(
@@ -188,15 +292,10 @@ async def websocket_endpoint(
 # ================= INTERNAL GEOIP API =================
 @app.get("/api/geoip/{ip_address}")
 def resolve_geoip_endpoint(ip_address: str, current_user: User = Depends(get_current_user)):
-    """
-    Rationale: Exposes the internal GeoIP resolution capability via REST API.
-    Delegates complex lookup logic to the core GeoIPEngine.
-    """
     result = geoip_engine.resolve(ip_address)
     if result.get("success"):
         return result
     
-    # Standardize HTTP status codes for enterprise APIs
     status_code = 503 if "not initialized" in result.get("message", "") else 404
     raise HTTPException(status_code=status_code, detail=result.get("message"))
 
@@ -240,27 +339,6 @@ def get_all_logs(
         return {"error": "Internal server error"}
 
 # ================= AUTHENTICATION & ORGANIZATION MANAGEMENT =================
-class UserCreate(BaseModel):
-    email: str = Field(..., max_length=255, pattern=r"^\S+@\S+\.\S+$")
-    username: str = Field(..., min_length=3, max_length=100)
-    password: str = Field(..., min_length=8, max_length=255)
-    phone: Optional[str] = Field(None, max_length=20)
-
-class TeamRegisterRequest(BaseModel):
-    name: str = Field(..., min_length=2, max_length=150)
-    unique_name: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-z0-9-]+$")
-    company_email: str = Field(..., max_length=255)
-    company_phone: str = Field(..., max_length=50)
-    industry: str = Field(..., max_length=100)
-    company_size: str = Field(..., max_length=50)
-    timezone_region: str = Field(..., max_length=100)
-    use_case: str = Field(..., max_length=100)
-    tax_id: Optional[str] = Field(None, max_length=50)
-    description: Optional[str] = Field(None, max_length=1000)
-
-class TeamActionRequest(BaseModel):
-    action: str = Field(..., pattern="^(approve|reject)$")
-
 @app.post("/api/auth/register")
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
     user_exists = db.query(User).filter(User.email == user_data.email).first()
@@ -391,11 +469,6 @@ def get_my_teams(current_user: User = Depends(get_current_user), db: Session = D
             })
     return {"teams": teams}
 
-class ServerCreateRequest(BaseModel):
-    team_id: str
-    name: str = Field(..., min_length=2, max_length=150)
-    ip_address: str = Field(..., min_length=3, max_length=255, pattern=r"^[a-zA-Z0-9.-]+$")
-
 @app.post("/api/servers/create")
 def create_server(
     request: ServerCreateRequest,
@@ -446,10 +519,6 @@ def get_organization_servers(
     return {"servers": result, "your_role": membership.role}
 
 # ================= AGENT DEPLOYMENT, KEY ROTATION & HEARTBEAT =================
-
-class HeartbeatPayload(BaseModel):
-    module: str
-
 @app.post("/api/agent/heartbeat")
 def agent_heartbeat(payload: HeartbeatPayload, server: Server = Depends(verify_agent_auth), db: Session = Depends(get_db)):
     if payload.module == "monitor":
