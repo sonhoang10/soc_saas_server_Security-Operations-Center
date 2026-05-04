@@ -1,154 +1,494 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flux | Enterprise Security Operations & Identity Response</title>
-    <link rel="stylesheet" href="src/index.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>FLUX | Identity Threat Response</title>
+    <link rel="stylesheet" href="/src/index.css">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sbBg: '#1c1c1c',     // Nền ngoài cùng
+                        sbCard: '#232323',   // Nền card
+                        sbTeal: '#3ecf8e',   // Màu xanh Supabase
+                        sbBorder: '#2e2e2e', // Màu border tinh tế
+                        sbText: '#ededed',
+                        sbSubText: '#a1a1a1',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #1c1c1c; }
+        .glass-panel {
+            background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 100%);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .btn-primary {
+            background-color: #3ecf8e;
+            color: #1c1c1c;
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover {
+            background-color: #63e6be;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(62, 207, 142, 0.25);
+        }
+        .btn-secondary {
+            background-color: #2e2e2e;
+            border: 1px solid #3e3e3e;
+            color: #ededed;
+        }
+        .btn-secondary:hover {
+            background-color: #3e3e3e;
+            border-color: #4e4e4e;
+        }
+        .reveal { opacity: 0; transform: translateY(20px); transition: all 0.6s ease-out; }
+        .reveal.active { opacity: 1; transform: translateY(0); }
+    </style>
 </head>
-<body class="bg-sbBg text-sbText antialiased">
-    <nav class="border-b border-sbBorder sticky top-0 bg-sbBg/80 backdrop-blur-md z-50">
+<body class="text-sbText font-sans selection:bg-sbTeal selection:text-sbBg">
+
+    <!-- HEADER -->
+    <nav class="fixed top-0 w-full z-[100] border-b border-sbBorder bg-sbBg/80 backdrop-blur-md">
         <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <i data-lucide="zap" class="text-sbTeal w-8 h-8"></i>
-                <span class="text-xl font-bold tracking-tight text-white uppercase">FLUX</span>
+            <div class="flex items-center gap-3 hover:cursor-pointer">
+                <div class="flex items-center gap-2">
+                        <i data-lucide="zap" class="text-sbTeal w-8 h-8"></i>
+                    <span onclick="window.location.href='index.html'" class="hover:cursor-pointer text-xl font-bold tracking-tight text-white uppercase">FLUX</span>
+                </div>
+                
             </div>
+            
             <div class="hidden md:flex items-center gap-8 text-sm font-medium text-sbSubText">
-                <a href="#features" class="hover:text-sbTeal transition">Features</a>
-                <a href="#solutions" class="hover:text-sbTeal transition">Solutions</a>
-                <a href="#compliance" class="hover:text-sbTeal transition">Compliance</a>
-                <a href="#pricing" class="hover:text-sbTeal transition">Pricing</a>
+                <a href="#features" class="hover:text-sbText transition">Features</a>
+                <a href="#pricing" class="hover:text-sbText transition">Pricing</a>
+                <a href="https://github.com/sonhoang10/soc_saas_server_Security-Operations-Center" class="hover:text-sbText transition">Documentation</a>
             </div>
-            <div class="flex items-center gap-4">
+
+            <div class="flex items-center gap-3">
                 <button onclick="window.location.href='SignIn.html'" class="text-sm font-medium hover:text-sbTeal">Sign In</button>
-                <button class="bg-sbTeal text-sbBg px-4 py-2 rounded-md text-sm font-bold hover:opacity-90 transition">Get Started</button>
+                <button onclick="window.location.href='Register.html'" class="btn-primary px-4 py-2 rounded-lg text-sm font-bold shadow-sm">Get Started</button>
             </div>
         </div>
     </nav>
 
-    <section class="py-24 px-6 max-w-7xl mx-auto text-center">
-        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sbTeal/10 border border-sbTeal/20 text-sbTeal text-xs font-bold mb-6 italic">
-            <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-sbTeal opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-sbTeal"></span></span>
-            NEXT-GEN IDENTITY THREAT PROTECTION
-        </div>
-        <h1 class="text-5xl md:text-7xl font-extrabold mb-8 tracking-tighter leading-tight text-white">
-            Beyond Detection.<br/><span class="text-sbTeal">Active Response.</span>
-        </h1>
-        <p class="text-xl text-sbSubText max-w-2xl mx-auto mb-10 leading-relaxed">
-            Flux is a modern SOC-as-a-Service platform built to detect, prevent, and govern identity risks in real-time. Secure your enterprise with automated incident response.
-        </p>
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button onclick="window.location.href='SignIn.html'" class="w-full sm:w-auto bg-sbTeal text-sbBg px-8 py-4 rounded-md font-bold text-lg flex items-center justify-center gap-2 hover:scale-105 transition shadow-lg shadow-sbTeal/20">
-                Deploy Now <i data-lucide="arrow-right" class="w-5 h-5"></i>
-            </button>
-            <button class="w-full sm:w-auto border border-sbBorder px-8 py-4 rounded-md font-bold text-lg hover:bg-sbCard transition text-white">
-                Live Demo
-            </button>
-        </div>
-        
-        <div class="mt-20 border border-sbBorder rounded-xl bg-sbCard overflow-hidden shadow-2xl relative">
-            <div class="h-8 bg-sbBg/50 border-b border-sbBorder flex items-center px-4 gap-1.5">
-                <div class="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/50"></div>
-                <div class="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
-                <div class="w-3 h-3 rounded-full bg-sbTeal/20 border border-sbTeal/50"></div>
+    <!-- HERO -->
+    <main id="hero" class="relative pt-32 pb-20 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-6 relative z-10">
+            <div class="text-center">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sbTeal/10 border border-sbTeal/20 text-sbTeal text-xs font-medium mb-8">
+                    <span class="w-1.5 h-1.5 rounded-full bg-sbTeal animate-pulse"></span>
+                    Beta v2.0 is now live
+                </div>
+                <h1 class="text-5xl md:text-7xl font-bold mb-6 tracking-tight leading-[1.1]">
+                    Modern Security for <br/>
+                    <span class="text-sbTeal">Identity-First Enterprises</span>
+                </h1>
+                <p class="text-lg text-sbSubText max-w-2xl mx-auto mb-10 leading-relaxed font-light">
+                    Flux provides real-time visibility and automated response for identity threats. Built for developers who care about security at scale.
+                </p>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                    <button onclick="window.location.href='Register.html'" class="btn-primary w-full sm:w-auto px-8 py-3 rounded-lg font-bold text-base">
+                        Start for free
+                    </button>
+                    <button class="btn-secondary w-full sm:w-auto px-8 py-3 rounded-lg font-bold text-base flex items-center justify-center gap-2">
+                        <i data-lucide="play-circle" class="w-5 h-5"></i> View Demo
+                    </button>
+                </div>
             </div>
-            <div class="bg-[#121212] w-full h-[450px] flex items-center justify-center">
-                <div class="text-sbSubText text-sm flex flex-col items-center gap-4">
-                    <i data-lucide="monitor" class="w-12 h-12 opacity-20"></i>
-                    <p class="italic">Unified Security Command Center Preview</p>
+
+            <!-- MOCKUP DASHBOARD -->
+            <div class="mt-20 glass-panel rounded-xl overflow-hidden shadow-2xl border border-sbBorder">
+                <div class="h-10 bg-sbCard border-b border-sbBorder flex items-center px-4 gap-2">
+                    <div class="flex gap-1.5">
+                        <div class="w-3 h-3 rounded-full bg-sbBorder"></div>
+                        <div class="w-3 h-3 rounded-full bg-sbBorder"></div>
+                        <div class="w-3 h-3 rounded-full bg-sbBorder"></div>
+                    </div>
+                    <div class="mx-auto bg-sbBg border border-sbBorder px-3 py-1 rounded-md text-[10px] text-sbSubText font-mono">
+                        dashboard.flux.systems/threat-center
+                    </div>
+                </div>
+                <div class="p-8 grid grid-cols-3 gap-6 bg-sbCard">
+                    <div class="col-span-2 space-y-6">
+                        <div class="h-64 rounded-lg bg-sbBg border border-sbBorder p-4 relative overflow-hidden">
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="text-[10px] font-mono text-sbTeal">ANOMALY_DETECTION_STREAM</span>
+                                <span class="text-[10px] font-mono text-sbSubText">LIVE_FEED</span>
+                            </div>
+                            <div class="space-y-2 opacity-40">
+                                <div class="h-2 w-full bg-sbBorder rounded"></div>
+                                <div class="h-2 w-3/4 bg-sbBorder rounded"></div>
+                                <div class="h-2 w-5/6 bg-sbBorder rounded"></div>
+                            </div>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <i data-lucide="bar-chart-3" class="w-12 h-12 text-sbTeal opacity-20"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="p-4 rounded-lg bg-sbBg border border-sbBorder">
+                            <h4 class="text-xs font-bold mb-3 uppercase tracking-wider text-sbSubText">Active Alerts</h4>
+                            <div class="space-y-3">
+                                <div class="flex items-center gap-3 text-xs text-red-400">
+                                    <div class="w-2 h-2 rounded-full bg-red-400"></div> Brute-force Attempt
+                                </div>
+                                <div class="flex items-center gap-3 text-xs text-yellow-400">
+                                    <div class="w-2 h-2 rounded-full bg-yellow-400"></div> Unusual Geo-login
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-4 rounded-lg bg-sbBg border border-sbBorder">
+                            <h4 class="text-xs font-bold mb-1">99.9% Uptime</h4>
+                            <p class="text-[10px] text-sbSubText">Global edge nodes active.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </section>
+    </main>
 
-    <section id="features" class="py-24 bg-sbCard/30 border-y border-sbBorder px-6">
+    <!-- FEATURES SECTION  -->
+    <section id="features" class="py-32 px-6 border-t border-sbBorder overflow-hidden">
         <div class="max-w-7xl mx-auto">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
-                <div class="space-y-4">
-                    <div class="w-12 h-12 bg-sbTeal/10 rounded-lg flex items-center justify-center border border-sbTeal/20 text-sbTeal">
-                        <i data-lucide="scan-eye" class="w-6 h-6"></i>
-                    </div>
-                    <h3 class="text-xl font-bold">Intelligent Detection</h3>
-                    <p class="text-sbSubText leading-relaxed">Advanced UEBA & AI-driven pattern matching to identify Brute-force, Session Hijacking, and Credential Stuffing before they escalate.</p>
+
+            <!-- Heading -->
+            <div class="text-center mb-20 reveal">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sbTeal/10 border border-sbTeal/20 text-sbTeal text-xs font-medium mb-6">
+                    <span class="w-1.5 h-1.5 rounded-full bg-sbTeal"></span>
+                    Core Security Features
                 </div>
-                <div class="space-y-4">
-                    <div class="w-12 h-12 bg-red-500/10 rounded-lg flex items-center justify-center border border-red-500/20 text-red-500">
-                        <i data-lucide="shield-off" class="w-6 h-6"></i>
-                    </div>
-                    <h3 class="text-xl font-bold">Active Prevention</h3>
-                    <p class="text-sbSubText leading-relaxed">Automated SOAR playbooks to isolate suspicious IPs, trigger adaptive MFA, or terminate compromised sessions in milliseconds.</p>
+
+                <h2 class="text-4xl md:text-5xl font-bold tracking-tight mb-5">
+                    Built for modern
+                    <span class="text-sbTeal"> security teams</span>
+                </h2>
+
+                <p class="text-sbSubText max-w-2xl mx-auto text-lg font-light">
+                    Complete identity protection with enterprise-grade monitoring,
+                    compliance, and real-time response.
+                </p>
+            </div>
+
+            <!-- Tabs -->
+            <div class="max-w-6xl mx-auto">
+
+                <!-- Tab Buttons -->
+                <div class="grid md:grid-cols-4 gap-4 mb-10 reveal">
+
+                    <button class="feature-tab active-tab p-5 rounded-xl border border-sbTeal bg-sbTeal/5 text-left transition-all duration-300 hover:cursor-pointer hover:shadow-[0_0_20px_rgba(62,207,142,0.08)]"
+                        data-tab="realtime">
+                        <p class="text-sm font-semibold mb-1">Realtime protection</p>
+                        <p class="text-xs text-sbSubText">
+                            Detect and stop identity threats instantly
+                        </p>
+                    </button>
+
+                    <button class="feature-tab p-5 rounded-xl border border-sbBorder bg-sbCard/50 text-left transition-all duration-300 hover:cursor-pointer hover:shadow-[0_0_20px_rgba(62,207,142,0.08)]"
+                        data-tab="compliance">
+                        <p class="text-sm font-semibold mb-1">SOC 2 + ISO 27001</p>
+                        <p class="text-xs text-sbSubText">
+                            Enterprise compliance by default
+                        </p>
+                    </button>
+
+                    <button class="feature-tab p-5 rounded-xl border border-sbBorder bg-sbCard/50 text-left transition-all duration-300 hover:cursor-pointer hover:shadow-[0_0_20px_rgba(62,207,142,0.08)]"
+                        data-tab="monitor">
+                        <p class="text-sm font-semibold mb-1">24/7 monitor</p>
+                        <p class="text-xs text-sbSubText">
+                            Continuous global threat visibility
+                        </p>
+                    </button>
+
+                    <button class="feature-tab p-5 rounded-xl border border-sbBorder bg-sbCard/50 text-left transition-all duration-300 hover:cursor-pointer hover:shadow-[0_0_20px_rgba(62,207,142,0.08)]"
+                        data-tab="platform">
+                        <p class="text-sm font-semibold mb-1">Self-control platform</p>
+                        <p class="text-xs text-sbSubText">
+                            Full visibility and admin control
+                        </p>
+                    </button>
+
                 </div>
-                <div class="space-y-4">
-                    <div class="w-12 h-12 bg-sbYellow/10 rounded-lg flex items-center justify-center border border-sbYellow/20 text-sbYellow">
-                        <i data-lucide="layers" class="w-6 h-6"></i>
+
+                <!-- Content Panel -->
+
+                <div class="glass-panel rounded-2xl border border-sbBorder overflow-hidden reveal">
+
+                    <!-- Realtime: Terminal & Animated Badges -->
+                    <div class="tab-content active-content p-10" id="realtime">
+                        <div class="grid md:grid-cols-2 gap-10 items-center">
+                            <div>
+                                <p class="text-xs font-mono text-sbTeal mb-3 uppercase tracking-widest">Realtime Engine</p>
+                                <h3 class="text-3xl font-bold mb-5 tracking-tight">Detection in <span class="text-sbTeal">milliseconds</span></h3>
+                                <p class="text-sbSubText leading-relaxed mb-8 font-light">The system continuously scans for attacks and responds immediately to protect the user's session.</p>
+                                <ul class="space-y-4 text-sm font-medium">
+                                    <li class="flex items-center gap-3"><i data-lucide="terminal" class="w-4 h-4 text-sbTeal"></i> Live Stream Intelligence</li>
+                                    <li class="flex items-center gap-3"><i data-lucide="shield-alert" class="w-4 h-4 text-sbTeal"></i> Automated IP Shunning</li>
+                                </ul>
+                            </div>
+
+                            <!-- Terminal Illustration -->
+                            <div class="relative h-[340px] rounded-xl bg-[#0d0d0d] border border-sbBorder p-4 font-mono text-[11px] overflow-hidden group shadow-2xl">
+                                <div class="flex gap-1.5 mb-4 border-b border-white/5 pb-2">
+                                    <div class="w-2 h-2 rounded-full bg-red-500/50"></div>
+                                    <div class="w-2 h-2 rounded-full bg-yellow-500/50"></div>
+                                    <div class="w-2 h-2 rounded-full bg-green-500/50"></div>
+                                </div>
+                                <div class="space-y-2 text-sbSubText/60">
+                                    <p class="text-sbTeal">[SYSTEM]: Engine initialized...</p>
+                                    <p>[INFO]: Scanning identity tokens...</p>
+                                    <p class="text-red-400 animate-pulse">[ALERT]: Suspicious brute-force detected from 192.168.1.104</p>
+                                    <p class="text-sbTeal">[ACTION]: Initiating automated block protocol...</p>
+                                    <p>[SUCCESS]: Access denied for UID: 8829</p>
+                                    <p class="animate-bounce">_</p>
+                                </div>
+                                
+                                <!-- Animated Badges -->
+                                <div class="absolute bottom-4 right-4 flex flex-col gap-2">
+                                    <div class="bg-sbTeal/10 border border-sbTeal/50 text-sbTeal px-3 py-1.5 rounded-md text-[10px] font-bold flex items-center gap-2 animate-[pulse_2s_infinite]">
+                                        <div class="w-1.5 h-1.5 bg-sbTeal rounded-full"></div> ATTACK_BLOCKED
+                                    </div>
+                                    <div class="bg-red-500/10 border border-red-500/50 text-red-500 px-3 py-1.5 rounded-md text-[10px] font-bold flex items-center gap-2">
+                                        <div class="w-1.5 h-1.5 bg-red-500 rounded-full animate-ping"></div> THREAT_NEUTRALIZED
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <h3 class="text-xl font-bold">Enterprise Governance</h3>
-                    <p class="text-sbSubText leading-relaxed">Multi-tenant architecture built for scale. Generate compliance-ready reports for ISO 27001, SOC2, and NIST frameworks instantly.</p>
+
+                    <!-- Compliance: Lucide Document Icons -->
+                    <div class="tab-content hidden p-10 opacity-0 translate-y-5 transition-all duration-500" id="compliance">
+                        <div class="grid md:grid-cols-2 gap-10 items-center">
+                            <div>
+                                <p class="text-xs font-mono text-sbTeal mb-3 uppercase tracking-widest">Governance & Trust</p>
+                                <h3 class="text-3xl font-bold mb-5 tracking-tight">Audit-Ready by Design</h3>
+                                <p class="text-sbSubText leading-relaxed mb-8 font-light">You don't need to worry about legal procedures. Flux meets the most stringent standards, giving businesses peace of mind to operate.</p>
+                            </div>
+
+                            <!-- Docs Illustration -->
+                            <div class="h-[340px] rounded-xl bg-sbCard border border-sbBorder flex items-center justify-center relative group">
+                                <div class="absolute inset-0 bg-sbTeal/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <div class="flex gap-4 relative z-10">
+                                    <div class="p-6 bg-sbBg border border-sbBorder rounded-lg transform -rotate-6 transition-transform group-hover:-rotate-12">
+                                        <i data-lucide="file-text" class="w-12 h-12 text-sbSubText"></i>
+                                        <p class="mt-4 text-[10px] font-bold text-center">ISO 27001</p>
+                                    </div>
+                                    <div class="p-8 bg-sbBg border border-sbTeal/40 rounded-lg scale-110 shadow-xl relative z-20">
+                                        <i data-lucide="shield-check" class="w-16 h-16 text-sbTeal"></i>
+                                        <p class="mt-4 text-[10px] font-bold text-center text-sbTeal uppercase">SOC 2 TYPE II</p>
+                                    </div>
+                                    <div class="p-6 bg-sbBg border border-sbBorder rounded-lg transform rotate-6 transition-transform group-hover:rotate-12">
+                                        <i data-lucide="lock" class="w-12 h-12 text-sbSubText"></i>
+                                        <p class="mt-4 text-[10px] font-bold text-center">GDPR</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Monitor: Profile Connections -->
+                    <div class="tab-content hidden p-10 opacity-0 translate-y-5 transition-all duration-500" id="monitor">
+                        <div class="grid md:grid-cols-2 gap-10 items-center">
+                            <div>
+                                <p class="text-xs font-mono text-sbTeal mb-3 uppercase tracking-widest">Global Watch</p>
+                                <h3 class="text-3xl font-bold mb-5 tracking-tight">Connected Intelligence</h3>
+                                <p class="text-sbSubText leading-relaxed mb-8 font-light">The global monitoring network connects data from millions of endpoints to identify anomalous behavior.</p>
+                            </div>
+
+                            <!-- Profile Network Illustration -->
+                            <div class="h-[340px] rounded-xl bg-sbCard border border-sbBorder flex items-center justify-center relative overflow-hidden">
+                                <svg class="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
+                                    <circle cx="50%" cy="50%" r="120" fill="none" stroke="#3ecf8e" stroke-width="1" stroke-dasharray="8 8" />
+                                </svg>
+                                <div class="relative flex items-center justify-center w-full h-full">
+                                    <!-- Central Node -->
+                                    <div class="w-16 h-16 bg-sbTeal rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(62,207,142,0.4)] relative z-10">
+                                        <i data-lucide="radio" class="text-sbBg w-8 h-8"></i>
+                                    </div>
+                                    <!-- Orbiting Profiles -->
+                                    <div class="absolute top-1/4 left-1/4 p-2 bg-sbBg border border-sbBorder rounded-full animate-bounce"><i data-lucide="user" class="w-5 h-5 text-sbSubText"></i></div>
+                                    <div class="absolute bottom-1/4 right-1/4 p-2 bg-sbBg border border-sbBorder rounded-full animate-pulse delay-75"><i data-lucide="user" class="w-5 h-5 text-sbSubText"></i></div>
+                                    <div class="absolute top-1/3 right-1/3 p-2 bg-sbBg border border-sbTeal/30 rounded-full animate-bounce delay-150"><i data-lucide="user" class="w-5 h-5 text-sbTeal"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Self-control: Key/Admin Panel -->
+                    <div class="tab-content hidden p-10 opacity-0 translate-y-5 transition-all duration-500" id="platform">
+                        <div class="grid md:grid-cols-2 gap-10 items-center">
+                            <div>
+                                <p class="text-xs font-mono text-sbTeal mb-3 uppercase tracking-widest">Full Authority</p>
+                                <h3 class="text-3xl font-bold mb-5 tracking-tight">Your keys, your <span class="text-sbTeal">rules</span></h3>
+                                <p class="text-sbSubText leading-relaxed mb-8 font-light">Define your own incident response playbooks and manage top-level access without relying on vendors.</p>
+                            </div>
+
+                            <!-- Self-control Illustration (Vault Style) -->
+                            <div class="h-[340px] rounded-xl bg-sbCard border border-sbBorder flex items-center justify-center relative group overflow-hidden">
+                                <div class="w-48 h-48 border-4 border-dashed border-sbBorder rounded-full flex items-center justify-center group-hover:rotate-90 transition-transform duration-1000">
+                                    <div class="w-32 h-32 bg-sbBg border border-sbTeal/20 rounded-full flex items-center justify-center">
+                                        <i data-lucide="key" class="w-12 h-12 text-sbTeal transform -rotate-45 group-hover:rotate-0 transition-transform duration-500"></i>
+                                    </div>
+                                </div>
+                                <div class="absolute top-10 right-10 bg-sbBg border border-sbBorder p-3 rounded-md shadow-lg transform group-hover:-translate-x-2 transition-transform">
+                                    <div class="w-10 h-1 bg-sbTeal rounded mb-2"></div>
+                                    <div class="w-6 h-1 bg-sbBorder rounded"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
     </section>
 
-    <section id="compliance" class="py-24 px-6 max-w-5xl mx-auto text-center">
-        <h2 class="text-3xl md:text-5xl font-bold mb-6">Built for Modern Infrastructure</h2>
-        <p class="text-sbSubText mb-12">Flux integrates seamlessly with your existing stack to provide a unified security layer.</p>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-8 w-full">
-            <div class="p-6 border border-sbBorder rounded-lg bg-sbBg">
-                <i data-lucide="cpu" class="w-5 h-5 text-sbTeal mx-auto mb-3"></i>
-                <p class="text-xl font-bold">99.99%</p>
-                <p class="text-xs text-sbSubText uppercase mt-1">SLA Guaranteed</p>
+    <!-- PRICING SECTION -->
+    <section id="pricing" class="py-32 px-6 border-t border-sbBorder">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">Transparent Pricing</h2>
+                <p class="text-sbSubText">No hidden fees. Scale as you grow.</p>
             </div>
-            <div class="p-6 border border-sbBorder rounded-lg bg-sbBg">
-                <i data-lucide="database" class="w-5 h-5 text-sbTeal mx-auto mb-3"></i>
-                <p class="text-xl font-bold">Immutable</p>
-                <p class="text-xs text-sbSubText uppercase mt-1">Audit Logs</p>
-            </div>
-            <div class="p-6 border border-sbBorder rounded-lg bg-sbBg">
-                <i data-lucide="cloud" class="w-5 h-5 text-sbTeal mx-auto mb-3"></i>
-                <p class="text-xl font-bold">Cloud-Native</p>
-                <p class="text-xs text-sbSubText uppercase mt-1">SOC SaaS</p>
-            </div>
-            <div class="p-6 border border-sbBorder rounded-lg bg-sbBg">
-                <i data-lucide="life-buoy" class="w-5 h-5 text-sbTeal mx-auto mb-3"></i>
-                <p class="text-xl font-bold">24/7/365</p>
-                <p class="text-xs text-sbSubText uppercase mt-1">Expert Support</p>
+            <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                <!-- Free -->
+                <div class="p-8 rounded-xl border border-sbBorder hover:border-sbTeal/30 transition bg-sbCard/50">
+                    <h3 class="font-bold text-xl mb-2">Free</h3>
+                    <p class="text-sbSubText text-sm mb-6">For personal projects.</p>
+                    <div class="text-3xl font-bold mb-6">$0 <span class="text-sm font-normal text-sbSubText">/mo</span></div>
+                    <button class="btn-secondary w-full py-2 rounded-lg text-sm font-bold mb-8">Get Started</button>
+                    <ul class="text-xs space-y-3 text-sbSubText">
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-3 h-3 text-sbTeal"></i> 50 Identities</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-3 h-3 text-sbTeal"></i> Email Support</li>
+                    </ul>
+                </div>
+                <!-- Pro -->
+                <div class="p-8 rounded-xl border border-sbTeal bg-sbTeal/5 relative shadow-[0_0_40px_rgba(62,207,142,0.1)]">
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-sbTeal text-sbBg text-[10px] font-bold px-3 py-1 rounded-full uppercase">Most Popular</div>
+                    <h3 class="font-bold text-xl mb-2">Pro</h3>
+                    <p class="text-sbSubText text-sm mb-6">For scaling startups.</p>
+                    <div class="text-3xl font-bold mb-6">$25 <span class="text-sm font-normal text-sbSubText">/mo</span></div>
+                    <button class="btn-primary w-full py-2 rounded-lg text-sm font-bold mb-8">Start Trial</button>
+                    <ul class="text-xs space-y-3">
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-3 h-3 text-sbTeal"></i> Unlimited Identities</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-3 h-3 text-sbTeal"></i> SOAR Automation</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-3 h-3 text-sbTeal"></i> Custom Rule Engine</li>
+                    </ul>
+                </div>
+                <!-- Enterprise -->
+                <div class="p-8 rounded-xl border border-sbBorder bg-sbCard/50">
+                    <h3 class="font-bold text-xl mb-2">Enterprise</h3>
+                    <p class="text-sbSubText text-sm mb-6">Customized solutions.</p>
+                    <div class="text-3xl font-bold mb-6">Custom</div>
+                    <button class="btn-secondary w-full py-2 rounded-lg text-sm font-bold mb-8">Contact Sales</button>
+                    <ul class="text-xs space-y-3 text-sbSubText">
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-3 h-3 text-sbTeal"></i> 24/7 Dedicated Support</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-3 h-3 text-sbTeal"></i> SSO Integration</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </section>
 
-    <section class="py-24 px-6">
-        <div class="max-w-5xl mx-auto bg-gradient-to-br from-sbTeal/20 via-sbBg to-sbBg border border-sbTeal/30 rounded-3xl p-12 text-center">
-            <h2 class="text-4xl font-bold mb-6 text-white">Ready to secure your digital assets?</h2>
-            <p class="text-lg text-sbSubText mb-10 max-w-xl mx-auto">Join industry leaders who trust Flux to monitor and protect their global operations.</p>
-            <div class="flex flex-col md:flex-row gap-4 justify-center">
-                <button class="bg-sbTeal text-sbBg px-10 py-4 rounded-md font-bold text-lg hover:scale-105 transition">
-                    Contact Sales
-                </button>
-                <button class="border border-sbBorder text-white px-10 py-4 rounded-md font-bold text-lg hover:bg-sbCard transition">
-                    Talk to an Expert
-                </button>
+    <!-- FOOTER -->
+    <footer class="py-12 border-t border-sbBorder bg-sbBg px-6">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2 opacity-60">
+                <i data-lucide="zap" class="w-4 h-4 text-sbTeal"></i>
+                <span class="font-bold text-xs uppercase tracking-widest">FLUX © 2026</span>
             </div>
-        </div>
-    </section>
-
-    <footer class="border-t border-sbBorder py-12 px-6">
-        <div class="max-w-7xl mx-auto flex flex-col md:row justify-between items-center gap-6">
-            <div class="flex items-center gap-2 opacity-50">
-                <i data-lucide="zap" class="w-5 h-5 text-sbTeal"></i>
-                <span class="font-bold text-sm tracking-widest uppercase">FLUX © 2026</span>
-            </div>
-            <div class="flex gap-8 text-sm text-sbSubText">
-                <a href="#" class="hover:text-sbTeal">Privacy Policy</a>
-                <a href="#" class="hover:text-sbTeal">Terms of Service</a>
-                <a href="#" class="hover:text-sbTeal">Security Architecture</a>
-                <a href="#" class="hover:text-sbTeal">Status</a>
+            <div class="flex gap-8 text-[11px] font-medium text-sbSubText uppercase tracking-wider">
+                <a href="#" class="hover:text-sbTeal transition">Status</a>
+                <a href="#" class="hover:text-sbTeal transition">Privacy</a>
+                <a href="#" class="hover:text-sbTeal transition">Security</a>
             </div>
         </div>
     </footer>
 
-    <script> lucide.createIcons(); </script>
-    <script src="/auth/auth.js"></script>
+    <!-- THÊM vào cuối <script> -->
+    <script>
+        lucide.createIcons();
+        /* reveal animation */
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add("active");
+                }
+            });
+        }, {
+            threshold: 0.1
+        });
+
+        document.querySelectorAll(".reveal").forEach(el => {
+            observer.observe(el);
+        });
+        /* TAB SWITCH LOGIC */
+        const tabs = document.querySelectorAll(".feature-tab");
+        const contents = document.querySelectorAll(".tab-content");
+
+        tabs.forEach(tab => {
+            tab.addEventListener("click", () => {
+                const target = tab.getAttribute("data-tab");
+
+                /* reset all tabs */
+                tabs.forEach(item => {
+                    item.classList.remove(
+                        "border-sbTeal",
+                        "bg-sbTeal/5",
+                        "shadow-[0_0_20px_rgba(62,207,142,0.08)]"
+                    );
+
+                    item.classList.add(
+                        "border-sbBorder",
+                        "bg-sbCard/50"
+                    );
+                });
+
+                /* active current tab */
+                tab.classList.remove(
+                    "border-sbBorder",
+                    "bg-sbCard/50"
+                );
+
+                tab.classList.add(
+                    "border-sbTeal",
+                    "bg-sbTeal/5",
+                    "shadow-[0_0_20px_rgba(62,207,142,0.08)]"
+                );
+
+                /* hide all content */
+                contents.forEach(content => {
+                    content.classList.add("hidden");
+                    content.style.opacity = "0";
+                    content.style.transform = "translateY(20px)";
+                });
+
+                /* show target content */
+                const activeContent = document.getElementById(target);
+
+                activeContent.classList.remove("hidden");
+
+                /* smooth animation */
+                setTimeout(() => {
+                    activeContent.style.transition = "all 0.45s ease";
+                    activeContent.style.opacity = "1";
+                    activeContent.style.transform = "translateY(0)";
+                }, 10);
+
+                /* re-render lucide icons */
+                lucide.createIcons();
+            });
+        });
+    </script>
 </body>
 </html>
