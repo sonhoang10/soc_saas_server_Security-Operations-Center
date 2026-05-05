@@ -15,17 +15,17 @@ Flux simplifies cybersecurity by providing centralized log ingestion, high-perfo
 
 ## Enterprise Features
 
-* **📡 Zero-Trust Data Ingestion:** Secure, read-only log streaming (Nginx, SSH, Web App) via Filebeat with view-once deployment tokens.
-* **⚡ Ultra-Low Latency Pipeline:** Utilizes **Apache Kafka** as a message broker and **ClickHouse** as a columnar data warehouse for lightning-fast log storage and retrieval.
-* **🧠 Advanced Logic Engine:** * **Deep IP Inspection:** Parses through proxy layers and IPv4-mapped IPv6 (`::ffff:`) to extract the true attacker IP.
+* ** Zero-Trust Data Ingestion:** Secure, read-only log streaming (Nginx, SSH, Web App) via Filebeat with view-once deployment tokens.
+* ** Ultra-Low Latency Pipeline:** Utilizes **Apache Kafka** as a message broker and **ClickHouse** as a columnar data warehouse for lightning-fast log storage and retrieval.
+* ** Advanced Logic Engine:** * **Deep IP Inspection:** Parses through proxy layers and IPv4-mapped IPv6 (`::ffff:`) to extract the true attacker IP.
   * **Sliding Window Aggregation:** Intelligently groups combo attacks (e.g., [Wave 2], [Wave 3]) and resets thresholds in real-time.
   * **Anti-Spam Cooldown:** Built-in alert muting (Debounce) to prevent dashboard alert fatigue during massive DDoS floods.
-* **🛡️ Active Defense (Feature Gating):** An independent IPS agent deployed on client servers. The Web UI intelligently locks or unlocks Manual/Auto-ban features based on the agent's real-time heartbeat.
-* **📊 Interactive React Dashboard:** A highly responsive Threat Map and real-time attack stream powered by WebSockets.
+* ** Active Defense (Feature Gating):** An independent IPS agent deployed on client servers. The Web UI intelligently locks or unlocks Manual/Auto-ban features based on the agent's real-time heartbeat.
+* ** Interactive React Dashboard:** A highly responsive Threat Map and real-time attack stream powered by WebSockets.
 
 ---
 
-## 🏗️ System Architecture (Data Flow)
+## System Architecture (Data Flow)
 
 The Flux architecture is built on a microservices model:
 
@@ -41,7 +41,7 @@ The Flux architecture is built on a microservices model:
 
 ---
 
-## 📂 Repository Structure
+## Repository Structure
 
 ```text
 Flux-SOC/
@@ -71,7 +71,7 @@ For installation: [Descriptive installation](installation.md)
 
 ---
 
-## 👥 Đội Ngũ Phát Triển (FLUX NK)
+## Đội Ngũ Phát Triển (FLUX NK)
 * Đặng Xuân Thủy: Engine Developer (Thiết kế logic & rule cảnh báo)
 * Nguyễn Minh Thái: Security Analyst (Phân tích bảo mật & Threat Intelligence)
 * Nguyễn Tuấn Kiệt: Frontend Developer (Thiết kế giao diện UI/UX)
@@ -79,5 +79,5 @@ For installation: [Descriptive installation](installation.md)
 * Nguyễn Phú Trọng: Presenter & QA (Kiểm soát chất lượng, Quản lý tiến độ)
 
 ---
-## 📜 License
+## License
 Distributed under the MIT License. Developed for educational and research purposes.
