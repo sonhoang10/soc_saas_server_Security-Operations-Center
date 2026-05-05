@@ -18,7 +18,7 @@ from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
 from api.database import get_db, test_db_connection
-from api.models import User, Team, TeamMember, Server, Alert # Nhập Alert model từ database
+from api.models import User, Team, TeamMember, Server, Alert, IncidentReport
 from api.auth_utils import (
     get_password_hash, 
     verify_password, 
@@ -135,7 +135,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# ================= VALIDATION SCHEMAS (MOVED UP FOR DECLARATION ORDER) =================
+# ================= VALIDATION SCHEMAS =================
 class AlertPayload(BaseModel):
     time: str
     level: str
@@ -183,22 +183,27 @@ class ServerCreateRequest(BaseModel):
 class HeartbeatPayload(BaseModel):
     module: str
 
+class IncidentReportCreate(BaseModel):
+    team_id: str
+    server_id: str
+    title: str = Field(..., min_length=5, max_length=255)
+    severity: str = Field(..., pattern="^(critical|high|medium|low)$")
+    description: str = Field(..., min_length=10)
+
+class IncidentReportUpdate(BaseModel):
+    status: Optional[str] = Field(None, pattern="^(pending|investigating|resolved)$")
+    admin_notes: Optional[str] = None
+
 
 # ================= SOC CORE API: ALERTS & WEBSOCKETS =================
 @app.post("/api/alerts", dependencies=[Depends(verify_internal_service)])
 async def receive_alert(alert: AlertPayload, db: Session = Depends(get_db)):
-    """
-    Nhận Alert từ Logic Engine, Broadcast qua WebSocket,
-    VÀ lưu trữ vĩnh viễn vào PostgreSQL.
-    """
     logger.warning(f"Red Alert: {alert.type} from IP {alert.ip} targeting {alert.target_server}")
     
-    # Bước 1: Tìm ID của Server dựa trên IP đích
     target_server_record = db.query(Server).filter(
         Server.ip_address.like(f"%{alert.target_server}%")
     ).first()
 
-    # Bước 2: Lưu vào PostgreSQL nếu tìm thấy Server
     if target_server_record:
         try:
             new_alert = Alert(
@@ -216,7 +221,6 @@ async def receive_alert(alert: AlertPayload, db: Session = Depends(get_db)):
             db.rollback()
             logger.error(f"Failed to persist alert in PostgreSQL: {e}")
 
-    # Bước 3: Phát sóng Real-time qua WebSocket
     await manager.broadcast(alert.model_dump())
     
     return {"status": "Broadcasted and Persisted"}
@@ -228,9 +232,6 @@ def get_alert_history(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Truy vấn lịch sử cảnh báo an ninh đã được phân tích bởi Logic Engine.
-    """
     server = db.query(Server).filter(Server.id == server_id).first()
     if not server:
          raise HTTPException(status_code=404, detail="Server not found.")
@@ -741,3 +742,113 @@ curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/
 echo "ACTIVE DEFENDER DEPLOYED."
 """
     return script
+
+# ================= INCIDENT REPORTS API =================
+
+@app.post("/api/reports")
+def create_incident_report(
+    report_data: IncidentReportCreate, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    server = db.query(Server).filter(Server.id == report_data.server_id, Server.team_id == report_data.team_id).first()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server or Team not found/authorized.")
+    
+    membership = db.query(TeamMember).filter(TeamMember.user_id == current_user.id, TeamMember.team_id == report_data.team_id).first()
+    if not membership:
+        raise HTTPException(status_code=403, detail="You are not authorized to create reports for this organization.")
+
+    new_report = IncidentReport(
+        team_id=report_data.team_id,
+        server_id=report_data.server_id,
+        created_by=current_user.id,
+        title=report_data.title,
+        severity=report_data.severity,
+        description=report_data.description
+    )
+    
+    db.add(new_report)
+    db.commit()
+    db.refresh(new_report)
+    
+    return {"message": "Incident report submitted successfully.", "report_id": str(new_report.id)}
+
+@app.get("/api/reports")
+def get_incident_reports(
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db),
+    status: Optional[str] = None,
+    team_id: Optional[str] = None
+):
+    """
+    API lấy danh sách Báo cáo Sự cố.
+    - Super Admin: Lấy toàn bộ hệ thống.
+    - Client: Chỉ được cấp dữ liệu thuộc về Team của họ.
+    """
+    query = db.query(IncidentReport).order_by(IncidentReport.created_at.desc())
+    
+    # 1. Cơ chế lọc phân quyền (RBAC)
+    if not getattr(current_user, "is_superadmin", False):
+        if not team_id:
+            # Nếu không truyền team_id, lấy toàn bộ team mà user đang tham gia
+            memberships = db.query(TeamMember).filter(TeamMember.user_id == current_user.id).all()
+            team_ids = [m.team_id for m in memberships]
+            query = query.filter(IncidentReport.team_id.in_(team_ids))
+        else:
+            # Nếu truyền team_id, xác minh quyền trước khi lọc
+            membership = db.query(TeamMember).filter(TeamMember.user_id == current_user.id, TeamMember.team_id == team_id).first()
+            if not membership:
+                raise HTTPException(status_code=403, detail="Access denied for this organization.")
+            query = query.filter(IncidentReport.team_id == team_id)
+            
+    # 2. Lọc theo Status (Pending / Resolved)
+    if status:
+        query = query.filter(IncidentReport.status == status)
+        
+    reports = query.all()
+    result = []
+    
+    for r in reports:
+        team = db.query(Team).filter(Team.id == r.team_id).first()
+        server = db.query(Server).filter(Server.id == r.server_id).first()
+        user = db.query(User).filter(User.id == r.created_by).first()
+        
+        result.append({
+            "id": str(r.id),
+            "title": r.title,
+            "severity": r.severity,
+            "description": r.description,
+            "status": r.status,
+            "admin_notes": r.admin_notes,
+            "created_at": r.created_at.isoformat(),
+            "team_name": team.name if team else "Unknown Team",
+            "server_name": server.name if server else "Unknown Server",
+            "server_ip": server.ip_address if server else "Unknown IP",
+            "sender_email": user.email if user else "Unknown User",
+            "sender_name": getattr(user, "username", "Unknown")
+        })
+        
+    return {"reports": result}
+
+@app.patch("/api/reports/{report_id}")
+def update_incident_report(
+    report_id: str,
+    update_data: IncidentReportUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not getattr(current_user, "is_superadmin", False):
+        raise HTTPException(status_code=403, detail="Superadmin privileges required.")
+        
+    report = db.query(IncidentReport).filter(IncidentReport.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Incident report not found.")
+        
+    if update_data.status:
+        report.status = update_data.status
+    if update_data.admin_notes is not None:
+        report.admin_notes = update_data.admin_notes
+        
+    db.commit()
+    return {"message": "Incident report updated successfully."}

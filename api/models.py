@@ -43,6 +43,7 @@ class Team(Base):
     assets = relationship("MonitoredAsset", back_populates="team", cascade="all, delete-orphan")
     log_sources = relationship("LogSource", back_populates="team", cascade="all, delete-orphan")
     servers = relationship("Server", back_populates="team", cascade="all, delete-orphan")
+    incident_reports = relationship("IncidentReport", back_populates="team", cascade="all, delete-orphan")
 
 class MonitoredAsset(Base):
     __tablename__ = "monitored_assets"
@@ -89,6 +90,7 @@ class Server(Base):
     deleted_at = Column(DateTime, nullable=True)
 
     team = relationship("Team", back_populates="servers")
+    incident_reports = relationship("IncidentReport", back_populates="server", cascade="all, delete-orphan")
 
 class FirewallRule(Base):
     __tablename__ = "firewall_rules"
@@ -113,3 +115,24 @@ class Alert(Base):
     status = Column(String(50), default='new')
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+# Bảng CSDL lưu trữ Báo cáo Sự cố từ Client gửi cho Admin
+class IncidentReport(Base):
+    __tablename__ = "incident_reports"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    team_id = Column(UUID(as_uuid=True), ForeignKey("teams.id", ondelete="CASCADE"))
+    server_id = Column(UUID(as_uuid=True), ForeignKey("servers.id", ondelete="CASCADE"))
+    created_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
+    
+    title = Column(String(255), nullable=False)
+    severity = Column(String(50), nullable=False) # critical, high, medium, low
+    description = Column(Text, nullable=False)
+    
+    status = Column(String(50), default='pending') # pending, investigating, resolved
+    admin_notes = Column(Text, nullable=True) # Phản hồi từ Super Admin
+    
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    team = relationship("Team", back_populates="incident_reports")
+    server = relationship("Server", back_populates="incident_reports")
